@@ -91,6 +91,14 @@ main{min-width:0;padding-inline:clamp(16px,3.5vw,40px);padding-block:28px 120px}
 .card{background:var(--surface);border-radius:var(--r);padding:22px;min-width:0;box-shadow:var(--shadow)}
 .card-h{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
 .g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.hero.hero-row{flex-direction:row;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
+.hero-main{display:flex;flex-direction:column;gap:4px;min-width:0}
+.hero-side{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.hero-pill{background:rgba(255,255,255,.18);border-radius:10px;padding:6px 11px;font-weight:700;font-size:.82rem}
+.hero-link{border:0;background:rgba(255,255,255,.16);color:inherit;border-radius:12px;padding:10px 14px;font-weight:700;font-size:.86rem}
+.hero-link:hover{background:rgba(255,255,255,.26)}
+.g2.home{align-items:start}
+@media (max-width:640px){.hero-side{align-items:stretch;width:100%}.hero-link{text-align:center}}
 .g-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);gap:20px;align-items:stretch}
 .g-hero.rev{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)}
 .g3{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:20px;align-items:start}
@@ -595,14 +603,11 @@ function vInicio(){
   let eqLine=dd.sub?'<small>'+dd.sub+'</small>':'';
   if(hasVES&&!tasa())eqLine='<small>Pon la tasa Binance para ver todo junto en dólares.</small>';
   else if(hasVES)eqLine+='<small>A tasa Binance '+money(tasa(),'VES')+'</small>';
-  o+='<div class="g-hero"><div class="hero"><span class="lbl">Dinero disponible</span><span class="big">'+(disp.length?dd.main:money(0,'USD'))+'</span>'+eqLine+'<small>Suma de tus métodos (sin tarjetas de crédito)</small>'+
-     '<div class="pills">'+metodos.filter(m=>!isCred(m)).slice(0,6).map(m=>'<span>'+esc(m.nombre)+' · '+balLine(m).main+'</span>').join('')+(deuda.length?'<span>Debes en tarjetas: '+dual(deuda).main+'</span>':'')+'</div></div>';
-  o+=inicioCircleCard()+'</div><div class="g3">';
-  const t=monthTotals(today().slice(0,7));
-  o+='<div class="card" style="display:flex;flex-direction:column;gap:14px"><div class="card-h" style="margin:0"><h2>'+monthLabel(today().slice(0,7))+'</h2><button class="link" type="button" data-nav="movs">Ver movimientos</button></div><div class="tiles"><div class="tile out"><span>Gastos</span>'+tileVal(t.gastos)+'</div><div class="tile in"><span>Ingresos</span>'+tileVal(t.ingresos)+'</div></div></div>'+inicioDeudas()+'</div>';
-  o+='<div class="card"><div class="card-h"><h2>Mis métodos de pago</h2><button class="btn sm soft" type="button" data-act="nuevo-metodo">'+svg('plus',2.4)+'Agregar</button></div><div class="cards">'+metodos.map(metCard).join('')+'</div></div>';
+  o+='<div class="hero hero-row"><div class="hero-main"><span class="lbl">Dinero disponible</span><span class="big">'+(disp.length?dd.main:money(0,'USD'))+'</span>'+eqLine+'</div>'+
+     '<div class="hero-side">'+(deuda.length?'<span class="hero-pill">Debes en tarjetas: '+dual(deuda).main+'</span>':'')+'<button class="hero-link" type="button" data-nav="metodos">Ver mis métodos de pago →</button></div></div>';
   const rec=[...movs].sort(byDate).slice(0,6);
-  o+='<div class="card"><div class="card-h"><h2>Últimos movimientos</h2>'+(movs.length?'<button class="link" type="button" data-nav="movs">Ver todos</button>':'')+'</div>'+(rec.length?'<div class="list">'+rec.map(movRow).join('')+'</div>':'<div class="empty"><b>Aún no hay movimientos</b><span>Registra tu primer gasto o ingreso.</span><button class="btn primary" type="button" data-act="nuevo-gasto">'+svg('gasto')+'Registrar gasto</button></div>')+'</div>';
+  const recCard='<div class="card"><div class="card-h"><h2>Últimos movimientos</h2>'+(movs.length?'<button class="link" type="button" data-nav="movs">Ver todos</button>':'')+'</div>'+(rec.length?'<div class="list">'+rec.map(movRow).join('')+'</div>':'<div class="empty"><b>Aún no hay movimientos</b><span>Registra tu primer ingreso o egreso con los botones.</span></div>')+'</div>';
+  o+='<div class="g2 home">'+inicioCircleCard()+recCard+'</div>';
   return o;
 }
 const byDate=(a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.creado||0)-(a.creado||0);
@@ -1206,7 +1211,7 @@ function inicioCircleCard(){
   const sw='<div class="seg mini" role="group" aria-label="Ver gastos"><button type="button" data-donut="gasto" aria-pressed="'+porGasto+'">Por gasto</button><button type="button" data-donut="cat" aria-pressed="'+(!porGasto)+'">Por categoría</button></div>';
   const max=8;
   return '<div class="card chartcard"><div class="card-h"><div><h2>Gastos de '+esc(mes)+'</h2><p class="sub">Todos tus gastos del mes, incluidos pagos de deudas</p></div>'+sw+'</div>'+
-    (total>0.004?'<div class="donutrow">'+donutBox(segs,total,'Total gastado')+'<div class="dlg">'+segs.slice(0,max).map(([n,v,c,cat])=>'<div tabindex="0"'+tipAttr({t:n,rows:[[Math.round(v/total*100)+'% del total',fmtC(v),c]]})+'><i style="background:'+c+'"></i><span>'+esc(n)+(porGasto&&cat?'<small>'+esc(cat)+'</small>':'')+'</span><em>'+fmtC(v)+'</em><b>'+Math.round(v/total*100)+'%</b></div>').join('')+'</div></div>'
+    (total>0.004?'<div class="donutrow">'+donutBox(segs,total,'Total gastado')+'<div class="dlg">'+segs.slice(0,max).map(([n,v,c,cat])=>'<div tabindex="0"'+tipAttr({t:n,rows:[[Math.round(v/total*100)+'% del total',fmtC(v),c]]})+'><i style="background:'+c+'"></i><span>'+esc(n)+(porGasto&&cat&&cat!==n?'<small>'+esc(cat)+'</small>':'')+'</span><em>'+fmtC(v)+'</em><b>'+Math.round(v/total*100)+'%</b></div>').join('')+'</div></div>'
     :'<div class="empty" style="padding:20px 8px"><b>Sin gastos este mes</b><span>Cuando registres gastos verás aquí en qué se va tu dinero.</span></div>')+
     kpiTxt(f,k)+KPI_ACTS+missNote(f.miss)+'</div>';
 }
