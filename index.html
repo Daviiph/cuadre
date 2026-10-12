@@ -130,6 +130,8 @@ main{min-width:0;padding-inline:clamp(16px,3.5vw,40px);padding-block:28px 120px}
 .dlg i{width:10px;height:10px;border-radius:3px;flex:none}
 .dlg span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
 .dlg b{color:var(--muted);font-variant-numeric:tabular-nums;min-width:38px;text-align:right}
+.seg.mini{grid-auto-flow:column;display:inline-grid}.seg.mini button{padding:6px 10px;font-size:.78rem}
+.dlg span small{display:block;color:var(--muted);font-weight:500;font-size:.74rem}
 .dlg em{font-style:normal;font-weight:700;font-variant-numeric:tabular-nums;font-size:.84rem}
 .dlg div{outline:none;border-radius:8px}.dlg div:focus-visible{box-shadow:0 0 0 2px var(--accent)}
 .catgrid{display:grid;grid-template-columns:200px minmax(0,1fr);gap:28px;align-items:center}
@@ -1126,21 +1128,29 @@ function movForm(v,preset,resume){
 const monthShort=k=>cap(new Intl.DateTimeFormat('es',{month:'short'}).format(pdate(k+'-01')).replace('.',''));
 const CAT_ORDEN=['Víveres','Gastos fijos','Gastos personales','Transporte','Salud','Ocio','Educación'];
 // El color sigue a la categoría: 7 fijas + la 1.ª propia; el resto va en gris
-const catCol=c=>{const i=CAT_ORDEN.indexOf(c);if(i>=0)return 'var(--cat'+(i+1)+')';const j=misCats('gasto').filter(x=>!CAT_ORDEN.includes(x)).indexOf(c);return j===0?'var(--cat8)':'var(--cat-x)'};
+const catCol=c=>{const i=CAT_ORDEN.indexOf(c);if(i>=0)return 'var(--cat'+(i+1)+')';if(c==='Deudas')return 'var(--cat8)';return 'var(--cat-x)'};
 function debtMovIds(){const s=new Set();deudas.forEach(d=>(d.abonos||[]).forEach(a=>{if(a.mov)s.add(a.mov)}));return s}
 const chartCur=()=>(tasa()||!metodos.some(m=>m.moneda==='VES'))?'USD':'VES';
 function convC(v,c){const cur=chartCur();if(cur==='USD')return toUSD(v,c);return c==='VES'?v:null}
 const fmtC=v=>money(v,chartCur());
 // Ingresos y gastos del mes sin deudas ni transferencias
-function flujoMes(k){
-  const ids=debtMovIds(),r={inc:0,exp:0,cat:{},day:{},miss:new Set()};
-  movs.forEach(v=>{
-    if((v.fecha||'').slice(0,7)!==k||v.tipo==='transfer'||ids.has(v.id))return;
-    if(v.tipo==='gasto'&&v.categoria==='Deudas')return;
-    if(v.tipo==='ingreso'&&v.categoria==='Cobros')return;
+function flujoMes(k,conDeudas){
+  const ids=debtMovIds(),r={inc:0,exp:0,cat:{},day:{},con:{},miss:new Set()};
+  [...movs].sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')||(a.creado||0)-(b.creado||0)).forEach(v=>{
+    if((v.fecha||'').slice(0,7)!==k||v.tipo==='transfer')return;
+    if(!conDeudas){
+      if(ids.has(v.id))return;
+      if(v.tipo==='gasto'&&v.categoria==='Deudas')return;
+      if(v.tipo==='ingreso'&&v.categoria==='Cobros')return;
+    }
     const c=curOfMov(v),x=convC(+v.monto||0,c);if(x==null){r.miss.add(c);return}
     if(v.tipo==='ingreso')r.inc+=x;
-    else{r.exp+=x;const cat=v.categoria||'Otros';r.cat[cat]=(r.cat[cat]||0)+x;const d=+String(v.fecha).slice(8,10);r.day[d]=(r.day[d]||0)+x}
+    else{
+      r.exp+=x;const cat=v.categoria||'Otros';r.cat[cat]=(r.cat[cat]||0)+x;const d=+String(v.fecha).slice(8,10);r.day[d]=(r.day[d]||0)+x;
+      const lbl=String(v.nota||'').trim()||cat,key=lbl.toLowerCase();
+      if(!r.con[key])r.con[key]={lbl,v:0,cat,orden:Object.keys(r.con).length};
+      r.con[key].v+=x;
+    }
   });
   return r;
 }
@@ -1180,11 +1190,23 @@ function trendCard(endK){
     groupedBars(cols,S,'Ingresos y gastos de los 6 meses hasta '+monthLabel(cur),availW(1))+kpiTxt(data[5],cur)+missNote(miss)+'</div>';
 }
 // Gráfica circular de Inicio
+let donutModo='gasto';try{const m=localStorage.getItem(LS+':donut');if(m==='cat'||m==='gasto')donutModo=m}catch(e){}
+// Cada gasto con su color según el orden en que apareció en el mes (no cambia al reordenar por monto)
+function gastoSegs(con){
+  const items=Object.values(con).filter(x=>x.v>0.004);
+  const colored=items.filter(x=>x.orden<8),rest=items.filter(x=>x.orden>=8);
+  const segs=colored.map(x=>[x.lbl,x.v,'var(--cat'+(x.orden+1)+')',x.cat]);
+  const r=rest.reduce((s,x)=>s+x.v,0);if(r>0.004)segs.push([rest.length===1?rest[0].lbl:'Otros '+rest.length+' gastos',r,'var(--cat-x)','']);
+  return segs.sort((a,b)=>b[1]-a[1]);
+}
 function inicioCircleCard(){
-  const k=today().slice(0,7),f=flujoMes(k),segs=catSegs(f.cat),total=f.exp;
+  const k=today().slice(0,7),f=flujoMes(k,true),total=f.exp,porGasto=donutModo==='gasto';
+  const segs=porGasto?gastoSegs(f.con):catSegs(f.cat);
   const mes=new Intl.DateTimeFormat('es',{month:'long'}).format(pdate(k+'-01'));
-  return '<div class="card chartcard"><div class="card-h"><div><h2>Gastos de '+esc(mes)+'</h2><p class="sub">Por categoría · sin deudas ni transferencias</p></div><button class="link" type="button" data-nav="movs">Ver detalle</button></div>'+
-    (total>0.004?'<div class="donutrow">'+donutBox(segs,total,'Total gastado')+'<div class="dlg">'+segs.slice(0,6).map(([n,v,c])=>'<div tabindex="0"'+tipAttr({t:n,rows:[[Math.round(v/total*100)+'% del total',fmtC(v),c]]})+'><i style="background:'+c+'"></i><span>'+esc(n)+'</span><em>'+fmtC(v)+'</em><b>'+Math.round(v/total*100)+'%</b></div>').join('')+'</div></div>'
+  const sw='<div class="seg mini" role="group" aria-label="Ver gastos"><button type="button" data-donut="gasto" aria-pressed="'+porGasto+'">Por gasto</button><button type="button" data-donut="cat" aria-pressed="'+(!porGasto)+'">Por categoría</button></div>';
+  const max=8;
+  return '<div class="card chartcard"><div class="card-h"><div><h2>Gastos de '+esc(mes)+'</h2><p class="sub">Todos tus gastos del mes, incluidos pagos de deudas</p></div>'+sw+'</div>'+
+    (total>0.004?'<div class="donutrow">'+donutBox(segs,total,'Total gastado')+'<div class="dlg">'+segs.slice(0,max).map(([n,v,c,cat])=>'<div tabindex="0"'+tipAttr({t:n,rows:[[Math.round(v/total*100)+'% del total',fmtC(v),c]]})+'><i style="background:'+c+'"></i><span>'+esc(n)+(porGasto&&cat?'<small>'+esc(cat)+'</small>':'')+'</span><em>'+fmtC(v)+'</em><b>'+Math.round(v/total*100)+'%</b></div>').join('')+'</div></div>'
     :'<div class="empty" style="padding:20px 8px"><b>Sin gastos este mes</b><span>Cuando registres gastos verás aquí en qué se va tu dinero.</span></div>')+
     kpiTxt(f,k)+KPI_ACTS+missNote(f.miss)+'</div>';
 }
@@ -1284,13 +1306,14 @@ ov.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('input')&
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&SH)closeSheet()});
 document.addEventListener('click',e=>{
   if(ov.contains(e.target))return;
-  const el=e.target.closest('[data-nav],[data-act],[data-edit-met],[data-edit-mov],[data-ftipo],[data-dtab],[data-abono],[data-edit-deuda],[data-pay-cuota],[data-hist],[data-delcat]');if(!el)return;
+  const el=e.target.closest('[data-nav],[data-act],[data-edit-met],[data-edit-mov],[data-ftipo],[data-dtab],[data-abono],[data-edit-deuda],[data-pay-cuota],[data-hist],[data-delcat],[data-donut]');if(!el)return;
   const d=el.dataset;
   if(d.nav){go(d.nav);return}
   if(d.ftipo){fTipo=d.ftipo;render();return}
   if(d.editMet){const m=metodo(d.editMet);if(m)metodoForm(m);return}
   if(d.editMov){const v=movs.find(x=>x.id===d.editMov);if(v)movForm(v);return}
   if(d.dtab){dTab=d.dtab;render();return}
+  if(d.donut){donutModo=d.donut;try{localStorage.setItem(LS+':donut',donutModo)}catch(e){}render();return}
   if(d.delcat){const i=d.delcat.indexOf('|'),t=d.delcat.slice(0,i),c=d.delcat.slice(i+1);
     if(el.dataset.armed!=='1'){el.dataset.armed='1';el.textContent='¿Quitar?';setTimeout(()=>{if(el.isConnected){el.dataset.armed='';el.textContent='×'}},3000);return}
     const cats={...(cfg.cats||{})};cats[t]=misCats(t).filter(x=>x!==c);putCfg({...cfg,cats}).then(()=>toast('Categoría “'+c+'” quitada')).catch(e=>toast(errText(e)));return}
