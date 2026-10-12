@@ -123,7 +123,9 @@ main{min-width:0;padding-inline:clamp(16px,3.5vw,40px);padding-block:28px 120px}
 .dlg div{display:flex;align-items:center;gap:8px;font-size:.86rem}
 .dlg i{width:10px;height:10px;border-radius:3px;flex:none}
 .dlg span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
-.dlg b{color:var(--muted);font-variant-numeric:tabular-nums}
+.dlg b{color:var(--muted);font-variant-numeric:tabular-nums;min-width:38px;text-align:right}
+.dlg em{font-style:normal;font-weight:700;font-variant-numeric:tabular-nums;font-size:.84rem}
+.dlg div{outline:none;border-radius:8px}.dlg div:focus-visible{box-shadow:0 0 0 2px var(--accent)}
 .catgrid{display:grid;grid-template-columns:200px minmax(0,1fr);gap:28px;align-items:center}
 .catgrid .donutbox{width:200px}
 .catlist{display:flex;flex-direction:column;gap:14px;min-width:0}
@@ -582,9 +584,9 @@ function vInicio(){
   else if(hasVES)eqLine+='<small>A tasa Binance '+money(tasa(),'VES')+'</small>';
   o+='<div class="g-hero"><div class="hero"><span class="lbl">Dinero disponible</span><span class="big">'+(disp.length?dd.main:money(0,'USD'))+'</span>'+eqLine+'<small>Suma de tus métodos (sin tarjetas de crédito)</small>'+
      '<div class="pills">'+metodos.filter(m=>!isCred(m)).slice(0,6).map(m=>'<span>'+esc(m.nombre)+' · '+balLine(m).main+'</span>').join('')+(deuda.length?'<span>Debes en tarjetas: '+dual(deuda).main+'</span>':'')+'</div></div>';
-  o+=trendCard()+'</div><div class="g3">';
+  o+=inicioCircleCard()+'</div><div class="g3">';
   const t=monthTotals(today().slice(0,7));
-  o+='<div class="card" style="display:flex;flex-direction:column;gap:14px"><div class="card-h" style="margin:0"><h2>'+monthLabel(today().slice(0,7))+'</h2><button class="link" type="button" data-nav="movs">Ver movimientos</button></div><div class="tiles"><div class="tile out"><span>Gastos</span>'+tileVal(t.gastos)+'</div><div class="tile in"><span>Ingresos</span>'+tileVal(t.ingresos)+'</div></div></div>'+donutCard(flujoMes(today().slice(0,7)))+inicioDeudas()+'</div>';
+  o+='<div class="card" style="display:flex;flex-direction:column;gap:14px"><div class="card-h" style="margin:0"><h2>'+monthLabel(today().slice(0,7))+'</h2><button class="link" type="button" data-nav="movs">Ver movimientos</button></div><div class="tiles"><div class="tile out"><span>Gastos</span>'+tileVal(t.gastos)+'</div><div class="tile in"><span>Ingresos</span>'+tileVal(t.ingresos)+'</div></div></div>'+inicioDeudas()+'</div>';
   o+='<div class="card"><div class="card-h"><h2>Mis métodos de pago</h2><button class="btn sm soft" type="button" data-act="nuevo-metodo">'+svg('plus',2.4)+'Agregar</button></div><div class="cards">'+metodos.map(metCard).join('')+'</div></div>';
   const rec=[...movs].sort(byDate).slice(0,6);
   o+='<div class="card"><div class="card-h"><h2>Últimos movimientos</h2>'+(movs.length?'<button class="link" type="button" data-nav="movs">Ver todos</button>':'')+'</div>'+(rec.length?'<div class="list">'+rec.map(movRow).join('')+'</div>':'<div class="empty"><b>Aún no hay movimientos</b><span>Registra tu primer gasto o ingreso.</span><button class="btn primary" type="button" data-act="nuevo-gasto">'+svg('gasto')+'Registrar gasto</button></div>')+'</div>';
@@ -597,7 +599,7 @@ function vMovs(){
   let list=movs.filter(v=>(v.fecha||'').slice(0,7)===month);
   const t=monthTotals(month);
   o+='<div class="tiles"><div class="tile out"><span>Gastos del mes</span>'+tileVal(t.gastos)+'</div><div class="tile in"><span>Ingresos del mes</span>'+tileVal(t.ingresos)+'</div></div>';
-  o+=catDetailCard(month)+dailyCard(month);
+  o+=trendCard(month)+catDetailCard(month)+dailyCard(month);
   if(fTipo!=='todos')list=list.filter(v=>v.tipo===fTipo);
   if(fMet)list=list.filter(v=>v.metodo===fMet||v.destino===fMet);
   list.sort(byDate);
@@ -1134,17 +1136,27 @@ function groupedBars(cols,series,aria,Wp){
 }
 const legend=series=>'<div class="lg">'+series.map(([n,c])=>'<span><i style="background:'+c+'"></i>'+esc(n)+'</span>').join('')+'</div>';
 
-function trendCard(){
-  const cur=today().slice(0,7),ks=[5,4,3,2,1,0].map(i=>shiftMonth(cur,-i)),data=ks.map(k=>({k,...flujoMes(k)}));
+const KPI_ACTS='<div class="kpi-actions"><button class="btn soft" type="button" data-act="nuevo-ingreso">'+svg('ingreso')+'Ingreso</button><button class="btn primary" type="button" data-act="nuevo-gasto">'+svg('gasto')+'Egreso</button></div>';
+function kpiTxt(f,k){const net=f.inc-f.exp,esCur=k===today().slice(0,7),en=esCur?'Este mes':'En '+monthLabel(k).toLowerCase();
+  return '<p class="kpi">'+(f.inc||f.exp?(net>=0?en+(esCur?' te quedan':' te quedaron')+' <b>'+fmtC(net)+'</b> de lo que ingresaste':en+' gastaste <b>'+fmtC(-net)+'</b> más de lo que ingresaste'):(esCur?'Aún no hay ingresos ni gastos este mes':'Sin ingresos ni gastos ese mes'))+'</p>'}
+// Barras de 6 meses (pantalla Movimientos), terminando en el mes elegido
+function trendCard(endK){
+  const cur=endK||today().slice(0,7),ks=[5,4,3,2,1,0].map(i=>shiftMonth(cur,-i)),data=ks.map(k=>({k,...flujoMes(k)}));
   const miss=new Set();data.forEach(d=>d.miss.forEach(x=>miss.add(x)));
   const S=[['Ingresos','var(--c-in)'],['Gastos','var(--c-out)']];
   const cols=data.map(d=>({lbl:monthShort(d.k),cur:d.k===cur,vals:[d.inc,d.exp],tip:{t:monthLabel(d.k),rows:[['Ingresos',fmtC(d.inc),'var(--c-in)'],['Gastos',fmtC(d.exp),'var(--c-out)'],[d.inc-d.exp>=0?'Ahorro':'Faltante',fmtC(Math.abs(d.inc-d.exp)),'']]}}));
-  const now=data[5],net=now.inc-now.exp;
-  const anyData=data.some(d=>d.inc||d.exp);
-  return '<div class="card chartcard"><div class="card-h"><div><h2>Ingresos y gastos</h2><p class="sub">Últimos 6 meses · sin deudas ni transferencias</p></div>'+legend(S)+'</div>'+
-    (anyData?groupedBars(cols,S,'Ingresos y gastos de los últimos 6 meses',availW(innerWidth>1000?0.62:1))+
-      '<p class="kpi">'+(now.inc||now.exp?(net>=0?'Este mes te quedan <b>'+fmtC(net)+'</b> de lo que ingresaste':'Este mes gastaste <b>'+fmtC(-net)+'</b> más de lo que ingresaste'):'Aún no hay ingresos ni gastos este mes')+'</p>'+'<div class="kpi-actions"><button class="btn soft" type="button" data-act="nuevo-ingreso">'+svg('ingreso')+'Ingreso</button><button class="btn primary" type="button" data-act="nuevo-gasto">'+svg('gasto')+'Egreso</button></div>'+missNote(miss)
-      :'<div class="empty" style="padding:24px 8px"><b>Tu gráfica aparecerá aquí</b><span>Registra ingresos y gastos para ver cómo cambian mes a mes.</span></div>'+'<div class="kpi-actions"><button class="btn soft" type="button" data-act="nuevo-ingreso">'+svg('ingreso')+'Ingreso</button><button class="btn primary" type="button" data-act="nuevo-gasto">'+svg('gasto')+'Egreso</button></div>')+'</div>';
+  if(!data.some(d=>d.inc||d.exp))return '';
+  return '<div class="card chartcard"><div class="card-h"><div><h2>Ingresos y gastos</h2><p class="sub">6 meses hasta '+monthLabel(cur).toLowerCase()+' · sin deudas ni transferencias</p></div>'+legend(S)+'</div>'+
+    groupedBars(cols,S,'Ingresos y gastos de los 6 meses hasta '+monthLabel(cur),availW(1))+kpiTxt(data[5],cur)+missNote(miss)+'</div>';
+}
+// Gráfica circular de Inicio
+function inicioCircleCard(){
+  const k=today().slice(0,7),f=flujoMes(k),segs=catSegs(f.cat),total=f.exp;
+  const mes=new Intl.DateTimeFormat('es',{month:'long'}).format(pdate(k+'-01'));
+  return '<div class="card chartcard"><div class="card-h"><div><h2>Gastos de '+esc(mes)+'</h2><p class="sub">Por categoría · sin deudas ni transferencias</p></div><button class="link" type="button" data-nav="movs">Ver detalle</button></div>'+
+    (total>0.004?'<div class="donutrow">'+donutBox(segs,total,'Total gastado')+'<div class="dlg">'+segs.slice(0,6).map(([n,v,c])=>'<div tabindex="0"'+tipAttr({t:n,rows:[[Math.round(v/total*100)+'% del total',fmtC(v),c]]})+'><i style="background:'+c+'"></i><span>'+esc(n)+'</span><em>'+fmtC(v)+'</em><b>'+Math.round(v/total*100)+'%</b></div>').join('')+'</div></div>'
+    :'<div class="empty" style="padding:20px 8px"><b>Sin gastos este mes</b><span>Cuando registres gastos verás aquí en qué se va tu dinero.</span></div>')+
+    kpiTxt(f,k)+KPI_ACTS+missNote(f.miss)+'</div>';
 }
 
 /* Dona de categorías */
