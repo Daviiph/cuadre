@@ -628,7 +628,7 @@ async function pedirCodigo(){
   const c=String(login.correo||'').trim().toLowerCase();
   if(!correoOk(c)){login.err='Escribe un correo válido, por ejemplo nombre@gmail.com.';render();return}
   login.correo=c;login.err='';login.info='';login.enviando=true;render();
-  try{await sfetch('/auth/v1/otp',{method:'POST',body:JSON.stringify({email:c,create_user:true})});login.paso='codigo';login.codigo='';login.info=''}
+  try{await sfetch('/auth/v1/otp?redirect_to='+encodeURIComponent(location.origin+location.pathname),{method:'POST',body:JSON.stringify({email:c,create_user:true})});login.paso='codigo';login.codigo='';login.info=''}
   catch(e){login.err=loginErr(e,false)}
   login.enviando=false;render();
   const f=$(login.paso==='codigo'?'#lCodigo':'#lCorreo');if(f)f.focus();
