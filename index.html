@@ -407,6 +407,8 @@ select.input{padding-right:8px}
 @media (max-width:640px){.adm-row.pago{flex-wrap:wrap}.pago-btns{width:100%}.pago-btns .btn{flex:1}}
 .st.bad{background:var(--neg-soft);color:var(--neg)}
 textarea.input{resize:vertical;min-height:70px;font:inherit}
+.bin-box{display:flex;flex-direction:column;gap:4px;background:var(--accent-soft);padding:12px 14px;border-radius:14px;font-size:.9rem;line-height:1.45}
+.bin-box b:first-child{font-size:1rem}
 </style>
 
 <div class="app">
@@ -952,7 +954,7 @@ const deudasActivas=()=>deudas.filter(d=>pendiente(d)>0.004).length;
 const diasHasta=iso=>Math.ceil((new Date(iso)-Date.now())/864e5);
 const fechaCorta=iso=>{const d=new Date(iso);return isNaN(d)?'':d.toLocaleDateString('es-VE',{day:'numeric',month:'long',year:'numeric'})};
 const usd=n=>'$'+(Math.round((+n||0)*100)/100).toLocaleString('es-VE');
-const COBRO_CAMPOS=[['pago_movil','Pago Móvil'],['binance','Binance Pay'],['zelle','Zelle'],['otro','Otro método']];
+const COBRO_CAMPOS=[['pago_movil','Pago Móvil'],['binance','Binance Pay'],['zinli','Zinli'],['zelle','Zelle'],['otro','Otro método']];
 const metodosCobro=()=>COBRO_CAMPOS.filter(([k])=>plan.cobro&&String(plan.cobro[k]||'').trim());
 async function cargarPlan(){
   try{const[i,a]=await Promise.all([nubeRpc('mi_plan',{}),api('/rest/v1/ajustes?select=cobro&id=eq.1')]);plan.info=i||{premium:false};plan.cobro=(a&&a[0]&&a[0].cobro)||{};render()}
@@ -980,7 +982,9 @@ function avisoPlan(){
   return '';
 }
 /* Pantalla Premium */
-const rep={periodo:'mes',metodo:'',referencia:'',monto:'',enviando:false,err:''};
+const rep={periodo:'mes',metodo:'',referencia:'',monto:'',enviando:false,err:'',info:''};
+const esBinance=()=>rep.metodo==='Binance Pay';
+const precioDe=per=>{const c=plan.cobro||{};return per==='anio'?(+c.precio_anio||20):(+c.precio_mes||2)};
 function vPremium(){
   if(mode!=='nube')return header('Cuadre Premium','Todas las funciones')+'<div class="card"><p style="margin:0">En esta versión tienes todas las funciones incluidas.</p></div>';
   const e=estadoPlan(),c=plan.cobro||{},pm=+c.precio_mes||2,pa=+c.precio_anio||20;
@@ -1003,26 +1007,44 @@ function vPremium(){
     o+='<div class="card rep"><div class="card-h"><div><h2>2. Reporta tu pago</h2><p class="sub">Cuando lo verifiquemos, tu cuenta pasa a Premium. Suele tardar menos de un día.</p></div></div>'+
       '<div class="seg" role="radiogroup" aria-label="Plan"><button type="button" data-per="mes" aria-pressed="'+(rep.periodo==='mes')+'">Mensual · '+usd(pm)+'</button><button type="button" data-per="anio" aria-pressed="'+(rep.periodo==='anio')+'">Anual · '+usd(pa)+'</button></div>'+
       '<div class="field"><label class="lbl" for="repMet">Método con el que pagaste</label><select class="input" id="repMet">'+mc.map(([,n])=>'<option'+(n===rep.metodo?' selected':'')+'>'+n+'</option>').join('')+'</select></div>'+
-      '<div class="two">'+campo('repRef','Número de referencia',rep.referencia,'maxlength="60" autocomplete="off" placeholder="Ej. 004512"')+campo('repMonto','Monto pagado',rep.monto,'maxlength="30" autocomplete="off" placeholder="Ej. $2 o Bs 2.030"')+'</div>'+
-      '<div class="err"'+(rep.err?'':' hidden')+'>'+esc(rep.err)+'</div><button class="btn primary block" type="button" id="repGo"'+(rep.enviando?' disabled':'')+'>'+(rep.enviando?'Enviando…':'Enviar reporte de pago')+'</button></div>';
+      (esBinance()?'<div class="bin-box"><b>Envía exactamente '+usd(precioDe(rep.periodo)).replace('$','')+' USDT</b><span>Desde Binance: Pagar → Enviar → al correo o Pay ID de arriba. Luego abre el detalle del pago y copia el <b>ID de la orden</b> (Order ID). Tu Premium se activa solo en segundos.</span></div>'+
+        campo('repRef','ID de la orden de Binance Pay',rep.referencia,'maxlength="60" autocomplete="off" inputmode="numeric" placeholder="Ej. 3504 1234 5678 9012"')
+      :'<div class="two">'+campo('repRef','Número de referencia',rep.referencia,'maxlength="60" autocomplete="off" placeholder="Ej. 004512"')+campo('repMonto','Monto pagado',rep.monto,'maxlength="30" autocomplete="off" placeholder="Ej. $2 o Bs 2.030"')+'</div>')+
+      (rep.info?'<p class="ok-msg">'+esc(rep.info)+'</p>':'')+
+      '<div class="err"'+(rep.err?'':' hidden')+'>'+esc(rep.err)+'</div><button class="btn primary block" type="button" id="repGo"'+(rep.enviando?' disabled':'')+'>'+(rep.enviando?(esBinance()?'Verificando con Binance…':'Enviando…'):(esBinance()?'Verificar mi pago':'Enviar reporte de pago'))+'</button></div>';
   }
   if(plan.pagos&&plan.pagos.length){
     const est={pendiente:['neutral','En revisión'],aprobado:['ok','Aprobado'],rechazado:['bad','Rechazado']};
-    o+='<div class="card"><div class="card-h"><h2>Mis pagos reportados</h2></div><div class="adm-list">'+plan.pagos.map(p=>{const s=est[p.estado]||est.pendiente;return '<div class="adm-row"><div class="adm-main"><b>'+(p.periodo==='anio'?'Anual':'Mensual')+' · '+esc(p.monto)+'</b><span>'+esc(p.metodo)+' · Ref. '+esc(p.referencia)+'</span><small>'+esc(fechaHora(p.creado))+(p.nota?' · '+esc(p.nota):'')+'</small></div><span class="st '+s[0]+'">'+s[1]+'</span></div>'}).join('')+'</div></div>';
+    o+='<div class="card"><div class="card-h"><h2>Mis pagos reportados</h2></div><div class="adm-list">'+plan.pagos.map(p=>{const s=est[p.estado]||est.pendiente;return '<div class="adm-row pago"><div class="adm-main"><b>'+(p.periodo==='anio'?'Anual':'Mensual')+' · '+esc(p.monto)+'</b><span>'+esc(p.metodo)+' · Ref. '+esc(p.referencia)+'</span><small>'+esc(fechaHora(p.creado))+(p.nota?' · '+esc(p.nota):'')+'</small></div><div class="pago-btns">'+(p.estado==='pendiente'&&p.metodo==='Binance Pay'?'<button class="btn sm" type="button" data-verif="'+p.id+'">Verificar</button>':'')+'<span class="st '+s[0]+'">'+s[1]+'</span></div></div>'}).join('')+'</div></div>';
   }
   return o;
 }
 async function reportarPago(){
   if(rep.enviando)return;
-  rep.referencia=String(rep.referencia).trim();rep.monto=String(rep.monto).trim();
-  if(rep.referencia.length<3){rep.err='Escribe el número de referencia del pago.';render();return}
+  const bin=esBinance();
+  rep.referencia=String(rep.referencia).trim();if(bin)rep.referencia=rep.referencia.replace(/\s+/g,'');
+  rep.monto=bin?usd(precioDe(rep.periodo)).replace('$','')+' USDT':String(rep.monto).trim();
+  if(rep.referencia.length<3){rep.err=bin?'Pega el ID de la orden de Binance Pay.':'Escribe el número de referencia del pago.';render();return}
   if(!rep.monto){rep.err='Escribe el monto que pagaste.';render();return}
-  rep.err='';rep.enviando=true;render();
+  rep.err='';rep.info='';rep.enviando=true;render();
   try{
-    await api('/rest/v1/pagos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({user_id:nube.ses.user.id,email:nube.ses.user.email,periodo:rep.periodo,metodo:rep.metodo,referencia:rep.referencia,monto:rep.monto})});
-    Object.assign(rep,{referencia:'',monto:''});toast('¡Recibido! Te avisaremos cuando se apruebe');await cargarMisPagos();
+    const r=await api('/rest/v1/pagos?select=id',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({user_id:nube.ses.user.id,email:nube.ses.user.email,periodo:rep.periodo,metodo:rep.metodo,referencia:rep.referencia,monto:rep.monto})});
+    Object.assign(rep,{referencia:'',monto:''});
+    const id=r&&r[0]&&r[0].id;
+    if(bin&&id)await verificarBinance(id,true);else toast('¡Recibido! Te avisaremos cuando se apruebe');
+    await cargarMisPagos();
   }catch(e){if(e.code!=='sin_sesion')rep.err='No se pudo enviar ('+(e.code||'error')+'). Intenta de nuevo.'}
   rep.enviando=false;render();
+}
+const MOT_BIN={no_encontrado:'Todavía no vemos ese pago en Binance. Si acabas de pagar, espera un minuto y toca “Verificar” en Mis pagos. Revisa también que el ID de la orden esté completo.',monto:'Encontramos el pago, pero el monto o la moneda no coinciden con el precio. Lo revisaremos a mano.',referencia_usada:'Ese ID de orden ya se usó en otro pago.',rechazado:'Este pago fue rechazado.'};
+async function verificarBinance(id,nuevo){
+  try{
+    const r=await api('/functions/v1/verificar-binance',{method:'POST',headers:{'x-region':'eu-central-1'},body:JSON.stringify({pago_id:+id})});
+    if(r&&r.ok){rep.info='';toast('¡Pago verificado! Ya eres Premium');await cargarPlan();plan.motivo='';return true}
+    rep.info=MOT_BIN[r&&r.motivo]||'Recibimos tu reporte. Lo revisaremos y te activaremos Premium pronto.';
+  }catch(e){if(e.code==='sin_sesion')return false;rep.info='Recibimos tu reporte. Lo revisaremos y te activaremos Premium pronto.'}
+  if(!nuevo)toast(rep.info);
+  return false;
 }
 /* Administrador: pagos por aprobar y datos de cobro */
 function adminPagosCard(){
@@ -1051,7 +1073,7 @@ function adminCobroCard(){
   const v=cob.v,ta=(id,l,ph)=>'<div class="field"><label class="lbl" for="cob_'+id+'">'+l+'</label><textarea class="input" id="cob_'+id+'" rows="3" maxlength="300" placeholder="'+ph+'">'+esc(v[id]||'')+'</textarea></div>';
   return o+'<div class="clave-box"><div class="two">'+campo('cob_precio_mes','Precio mensual ($)',v.precio_mes,'inputmode="decimal" maxlength="8"')+campo('cob_precio_anio','Precio anual ($)',v.precio_anio,'inputmode="decimal" maxlength="8"')+'</div>'+
     campo('cob_prueba_dias','Días de prueba gratis para cuentas nuevas',v.prueba_dias,'inputmode="numeric" maxlength="3"')+
-    ta('pago_movil','Pago Móvil','Banco, teléfono y cédula. Ej.: Mercantil (0105) · 0412-1234567 · V-12.345.678')+ta('binance','Binance Pay','Tu Pay ID o correo de Binance')+ta('zelle','Zelle','Correo y nombre del titular')+ta('otro','Otro método','Opcional')+
+    ta('pago_movil','Pago Móvil','Banco, teléfono y cédula. Ej.: Mercantil (0105) · 0412-1234567 · V-12.345.678')+ta('binance','Binance Pay','Tu Pay ID o correo de Binance')+ta('zinli','Zinli','Correo de tu cuenta Zinli')+ta('zelle','Zelle','Correo y nombre del titular')+ta('otro','Otro método','Opcional')+
     '<p class="hint" style="margin:0">Deja vacío el método que no uses. Todo usuario con sesión puede ver estos datos para poder pagarte.</p>'+
     '<div class="err"'+(cob.err?'':' hidden')+'>'+esc(cob.err)+'</div><div class="two"><button class="btn block" type="button" id="cobCancel">Cancelar</button><button class="btn primary block" type="button" id="cobGuardar"'+(cob.enviando?' disabled':'')+'>'+(cob.enviando?'Guardando…':'Guardar')+'</button></div></div></div>';
 }
@@ -1091,10 +1113,11 @@ window.addEventListener('click',e=>{
 function irPremium(){go('premium');if(mode==='nube'&&nube.ses){if(!plan.pagos)cargarMisPagos()}}
 const REPF={repRef:'referencia',repMonto:'monto'};
 document.addEventListener('input',e=>{const id=e.target.id;if(REPF[id])rep[REPF[id]]=e.target.value;else if(id.startsWith('cob_'))cob.v[id.slice(4)]=e.target.value});
-document.addEventListener('change',e=>{if(e.target.id==='repMet')rep.metodo=e.target.value});
+document.addEventListener('change',e=>{if(e.target.id==='repMet'){rep.metodo=e.target.value;rep.err='';render()}});
 document.addEventListener('click',e=>{
-  const t=e.target.closest&&e.target.closest('[data-premium],[data-per],#repGo,[data-pago],#pendRec,#cobAbrir,#cobCancel,#cobGuardar,[data-copiar]');if(!t)return;
-  if(t.dataset.premium){plan.motivo='';irPremium()}
+  const t=e.target.closest&&e.target.closest('[data-verif],[data-premium],[data-per],#repGo,[data-pago],#pendRec,#cobAbrir,#cobCancel,#cobGuardar,[data-copiar]');if(!t)return;
+  if(t.dataset.verif){t.disabled=true;t.textContent='Verificando…';verificarBinance(t.dataset.verif,false).then(()=>cargarMisPagos())}
+  else if(t.dataset.premium){plan.motivo='';irPremium()}
   else if(t.dataset.per){rep.periodo=t.dataset.per;render()}
   else if(t.id==='repGo')reportarPago();
   else if(t.dataset.pago){const[id,ok]=t.dataset.pago.split('|');revisarPago(id,ok==='1',t)}
