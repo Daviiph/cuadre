@@ -385,6 +385,28 @@ select.input{padding-right:8px}
 .legal h2{font-size:1.1rem;margin:10px 0 0}.legal h3{font-size:.95rem;margin:6px 0 0}
 .legal p,.legal li{font-size:.92rem;line-height:1.55;color:var(--ink)}.legal p{margin:0}.legal ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 .legal>.btn.sm{align-self:flex-start}
+.plan-tit{margin:4px 0 2px;font-weight:800;font-size:1.05rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.plan-chip{background:var(--accent);color:var(--accent-ink);font-size:.68rem;font-weight:800;letter-spacing:.06em;padding:3px 8px;border-radius:999px}
+.plan-card.premium,.plan-card.admin,.plan-card.prueba{background:linear-gradient(135deg,var(--accent-soft),var(--surface) 70%)}
+.plan-aviso{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--accent-soft);color:var(--ink);padding:12px 14px;border-radius:14px;font-weight:600;font-size:.9rem}
+.tabla-wrap{overflow-x:auto}
+.plan-tabla{width:100%;border-collapse:collapse;font-size:.9rem}
+.plan-tabla th,.plan-tabla td{text-align:left;padding:10px 8px;border-top:1px solid var(--line)}
+.plan-tabla th{border-top:0;color:var(--muted);font-size:.78rem;font-weight:700}
+.plan-tabla td:last-child{font-weight:700;color:var(--accent)}
+.plan-tabla small{color:var(--muted);font-weight:500}
+.precios{gap:14px}
+.precio{display:flex;flex-direction:column;gap:2px}.precio small{color:var(--muted);font-weight:600}.precio b{font-size:2rem;font-weight:800;letter-spacing:-.02em}.precio span{color:var(--muted)}
+.precio.dest{border:2px solid var(--accent)}
+.cobro-list{display:flex;flex-direction:column;gap:10px}
+.cobro{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:start;background:var(--soft);padding:12px 14px;border-radius:14px}
+.cobro b{grid-column:1}.cobro pre{grid-column:1;margin:0;font:inherit;white-space:pre-wrap;word-break:break-word;color:var(--ink)}
+.cobro .btn{grid-column:2;grid-row:1/3;align-self:center}
+.rep{display:flex;flex-direction:column;gap:14px}
+.pago-btns{display:flex;gap:8px;flex:none}
+@media (max-width:640px){.adm-row.pago{flex-wrap:wrap}.pago-btns{width:100%}.pago-btns .btn{flex:1}}
+.st.bad{background:var(--neg-soft);color:var(--neg)}
+textarea.input{resize:vertical;min-height:70px;font:inherit}
 </style>
 
 <div class="app">
@@ -583,7 +605,7 @@ const nubePut=(col,id,data)=>api('/rest/v1/docs?on_conflict=user_id,col,id',{met
 const nubeDel=(col,id)=>api('/rest/v1/docs?col=eq.'+encodeURIComponent(col)+'&id=eq.'+encodeURIComponent(id),{method:'DELETE',headers:{Prefer:'return=minimal'}});
 function sesionVencida(){if(mode!=='nube')return;borrarSes();resetDatos();mode='login';irPaso('entrar');login.err='Tu sesión se cerró. Vuelve a entrar.';closeSheetSafe();render()}
 function closeSheetSafe(){try{if(SH)closeSheet()}catch(e){}}
-function resetDatos(){metodos=[];movs=[];deudas=[];cfg={};nube.cargado=false;nube.admin=false;nube.usuarios=null}
+function resetDatos(){metodos=[];movs=[];deudas=[];cfg={};nube.cargado=false;nube.admin=false;nube.usuarios=null;plan.info=null;plan.pagos=null;plan.pendientes=null;plan.motivo=''}
 function dispositivo(){const u=navigator.userAgent||'';const so=/iPhone/.test(u)?'iPhone':/iPad/.test(u)?'iPad':/Android/.test(u)?'Android':/Windows/.test(u)?'Windows':/Mac OS X|Macintosh/.test(u)?'Mac':/Linux/.test(u)?'Linux':'Otro';const nav=/Edg\//.test(u)?'Edge':/OPR\/|Opera/.test(u)?'Opera':/CriOS|Chrome\//.test(u)?'Chrome':/FxiOS|Firefox\//.test(u)?'Firefox':/Safari\//.test(u)?'Safari':'Navegador';return so+' · '+nav}
 async function initNube(){
   // Enlaces del correo (verificar cuenta, entrar, recuperar contraseña): la sesión llega en la dirección
@@ -615,8 +637,9 @@ async function cargarNube(primera){
     render();
     if(primera){
       api('/auth/v1/user').then(u=>{actualizarUsuario(u);render()}).catch(()=>{});
+      cargarPlan();
       const pf=cfg.perfil||{};
-      nubeRpc('marcar_visita',{disp:dispositivo()}).then(a=>{nube.admin=a===true;if(pf.nombre)nubeRpc('guardar_perfil',{p_nombre:pf.nombre,p_apellido:pf.apellido||'',p_nacimiento:pf.nacimiento||null}).catch(()=>{});if(nube.admin&&view==='perfil')cargarUsuarios();render()}).catch(()=>{});
+      nubeRpc('marcar_visita',{disp:dispositivo()}).then(a=>{nube.admin=a===true;if(pf.nombre)nubeRpc('guardar_perfil',{p_nombre:pf.nombre,p_apellido:pf.apellido||'',p_nacimiento:pf.nacimiento||null}).catch(()=>{});if(nube.admin&&view==='perfil'){cargarUsuarios();cargarPendientes()}render()}).catch(()=>{});
     }
   }catch(e){
     if(e.code==='sin_sesion')return;
@@ -803,7 +826,7 @@ function adminCard(){
   const ahora=Date.now(),d7=u.filter(x=>x.ultima_vez&&ahora-new Date(x.ultima_vez)<7*864e5).length,mes=today().slice(0,7),nuevos=u.filter(x=>(x.creado||'').slice(0,7)===mes).length;
   const tieneVer=u.some(x=>'verificado' in x),ver=u.filter(x=>x.verificado).length;
   o+='<div class="adm-kpis"><div><b>'+u.length+'</b><small>Registrados</small></div>'+(tieneVer?'<div><b>'+ver+'</b><small>Verificados</small></div>':'')+'<div><b>'+d7+'</b><small>Activos en 7 días</small></div><div><b>'+nuevos+'</b><small>Nuevos este mes</small></div></div>';
-  o+='<div class="adm-list">'+u.map(x=>{const n=[x.nombre,x.apellido].filter(Boolean).join(' ');return '<div class="adm-row"><div class="avatar sm">'+iniciales(n||x.email||'?')+'</div><div class="adm-main"><b>'+esc(n||'Sin perfil aún')+(tieneVer?' '+(x.verificado?'<span class="vbadge sm" title="Verificado">'+icoVerif+'</span>':'<span class="vbadge no sm"><span>Sin verificar</span></span>'):'')+'</b><span>'+esc(x.email||'')+'</span><small>Registro: '+esc(fechaHora(x.creado))+(x.dispositivo?' · '+esc(x.dispositivo):'')+'</small></div><div class="adm-last"><b>'+esc(haceCuanto(x.ultima_vez))+'</b><small>'+(x.visitas||0)+' '+(x.visitas===1?'visita':'visitas')+'</small></div></div>'}).join('')+'</div></div>';
+  o+='<div class="adm-list">'+u.map(x=>{const n=[x.nombre,x.apellido].filter(Boolean).join(' ');return '<div class="adm-row"><div class="avatar sm">'+iniciales(n||x.email||'?')+'</div><div class="adm-main"><b>'+esc(n||'Sin perfil aún')+(tieneVer?' '+(x.verificado?'<span class="vbadge sm" title="Verificado">'+icoVerif+'</span>':'<span class="vbadge no sm"><span>Sin verificar</span></span>'):'')+'</b><span>'+esc(x.email||'')+'</span><small>Registro: '+esc(fechaHora(x.creado))+(x.dispositivo?' · '+esc(x.dispositivo):'')+' · '+esc(planTxt(x))+'</small></div><div class="adm-last"><b>'+esc(haceCuanto(x.ultima_vez))+'</b><small>'+(x.visitas||0)+' '+(x.visitas===1?'visita':'visitas')+'</small></div></div>'}).join('')+'</div></div>';
   return o;
 }
 
@@ -921,6 +944,166 @@ document.addEventListener('click',e=>{
   else if(t.id==='delCancel'){Object.assign(borrar,{abierto:false,texto:'',err:''});render()}
   else if(t.id==='delGo')eliminarCuenta();
 });
+/* ---------- Membresía: plan Gratis / Premium (versión web) ---------- */
+const LIM={metodos:3,deudas:2,meses:3};
+const plan={info:null,cobro:null,pagos:null,pendientes:null,motivo:''};
+const esPremium=()=>mode!=='nube'||!plan.info||!!plan.info.premium;
+const deudasActivas=()=>deudas.filter(d=>pendiente(d)>0.004).length;
+const diasHasta=iso=>Math.ceil((new Date(iso)-Date.now())/864e5);
+const fechaCorta=iso=>{const d=new Date(iso);return isNaN(d)?'':d.toLocaleDateString('es-VE',{day:'numeric',month:'long',year:'numeric'})};
+const usd=n=>'$'+(Math.round((+n||0)*100)/100).toLocaleString('es-VE');
+const COBRO_CAMPOS=[['pago_movil','Pago Móvil'],['binance','Binance Pay'],['zelle','Zelle'],['otro','Otro método']];
+const metodosCobro=()=>COBRO_CAMPOS.filter(([k])=>plan.cobro&&String(plan.cobro[k]||'').trim());
+async function cargarPlan(){
+  try{const[i,a]=await Promise.all([nubeRpc('mi_plan',{}),api('/rest/v1/ajustes?select=cobro&id=eq.1')]);plan.info=i||{premium:false};plan.cobro=(a&&a[0]&&a[0].cobro)||{};render()}
+  catch(e){}
+}
+async function cargarMisPagos(){try{plan.pagos=await api('/rest/v1/pagos?select=id,periodo,metodo,referencia,monto,estado,nota,creado&user_id=eq.'+nube.ses.user.id+'&order=creado.desc&limit=20');render()}catch(e){}}
+async function cargarPendientes(){try{plan.pendientes=await api('/rest/v1/pagos?select=*&estado=eq.pendiente&order=creado.asc&limit=100');render()}catch(e){plan.pendientes=[]}}
+function estadoPlan(){
+  const i=plan.info||{};
+  if(i.admin)return{tipo:'admin',titulo:'Premium · Administrador',txt:'Eres el administrador: tienes Premium siempre.'};
+  if(i.premium_hasta&&new Date(i.premium_hasta)>Date.now())return{tipo:'premium',titulo:'Premium',txt:'Activo hasta el '+fechaCorta(i.premium_hasta)+'.',dias:diasHasta(i.premium_hasta)};
+  if(i.prueba_hasta&&new Date(i.prueba_hasta)>Date.now())return{tipo:'prueba',titulo:'Prueba gratis de Premium',txt:'Te quedan '+diasHasta(i.prueba_hasta)+' días (hasta el '+fechaCorta(i.prueba_hasta)+').',dias:diasHasta(i.prueba_hasta)};
+  return{tipo:'gratis',titulo:'Plan Gratis',txt:'Hasta '+LIM.metodos+' métodos de pago, '+LIM.deudas+' deudas activas y gráficas de los últimos '+LIM.meses+' meses.'};
+}
+const MOTIVOS={metodos:'Llegaste a '+LIM.metodos+' métodos de pago, el máximo del plan Gratis.',deudas:'Llegaste a '+LIM.deudas+' deudas activas, el máximo del plan Gratis.',cats:'Crear categorías propias es parte de Premium.',meses:'En el plan Gratis ves los últimos '+LIM.meses+' meses.'};
+function planCard(){
+  if(mode!=='nube'||!plan.info)return '';
+  const e=estadoPlan();
+  return '<div class="card plan-card '+e.tipo+'"><div class="card-h"><div><h2>Mi plan</h2><p class="plan-tit">'+(e.tipo==='gratis'?'':'<span class="plan-chip">PREMIUM</span>')+esc(e.titulo)+'</p><p class="sub">'+esc(e.txt)+'</p></div>'+(e.tipo==='admin'?'':'<button class="btn'+(e.tipo==='premium'?'':' primary')+'" type="button" data-premium="1">'+(e.tipo==='premium'?'Renovar':'Hazte Premium')+'</button>')+'</div></div>';
+}
+function avisoPlan(){
+  if(mode!=='nube'||!plan.info)return '';
+  const e=estadoPlan();
+  if((e.tipo==='prueba'||e.tipo==='premium')&&e.dias<=5)return '<div class="plan-aviso"><span>'+(e.tipo==='prueba'?'Tu prueba de Premium termina':'Tu Premium vence')+(e.dias<=1?' mañana':' en '+e.dias+' días')+'.</span><button class="btn sm primary" type="button" data-premium="1">'+(e.tipo==='prueba'?'Hazte Premium':'Renovar')+'</button></div>';
+  return '';
+}
+/* Pantalla Premium */
+const rep={periodo:'mes',metodo:'',referencia:'',monto:'',enviando:false,err:''};
+function vPremium(){
+  if(mode!=='nube')return header('Cuadre Premium','Todas las funciones')+'<div class="card"><p style="margin:0">En esta versión tienes todas las funciones incluidas.</p></div>';
+  const e=estadoPlan(),c=plan.cobro||{},pm=+c.precio_mes||2,pa=+c.precio_anio||20;
+  let o=header('Cuadre Premium','Más control sobre tu dinero','<button class="btn" type="button" data-nav="perfil">← Volver</button>');
+  if(plan.motivo&&!esPremium())o+='<div class="plan-aviso"><span>'+esc(MOTIVOS[plan.motivo]||'')+' Hazte Premium para seguir.</span></div>';
+  o+='<div class="card plan-card '+e.tipo+'"><p class="plan-tit">'+(e.tipo==='gratis'?'':'<span class="plan-chip">PREMIUM</span>')+'Tu plan: '+esc(e.titulo)+'</p><p class="sub" style="margin:0">'+esc(e.txt)+'</p></div>';
+  const fila=(f,g,p)=>'<tr><td>'+f+'</td><td>'+g+'</td><td>'+p+'</td></tr>';
+  o+='<div class="card"><div class="card-h"><h2>Qué incluye</h2></div><div class="tabla-wrap"><table class="plan-tabla"><thead><tr><th>Función</th><th>Gratis</th><th>Premium</th></tr></thead><tbody>'+
+    fila('Registrar gastos e ingresos','Sin límite','Sin límite')+fila('Métodos de pago','Hasta '+LIM.metodos,'Ilimitados')+fila('Deudas activas','Hasta '+LIM.deudas,'Ilimitadas')+
+    fila('Gráficas e historial','Últimos '+LIM.meses+' meses','Completo')+fila('Categorías propias','No','Sí')+
+    fila('Asistente financiero','No','Sí <small>(próximamente)</small>')+fila('Recordatorios de cuotas','No','Sí <small>(próximamente)</small>')+fila('Exportar a Excel o PDF','No','Sí <small>(próximamente)</small>')+
+    '</tbody></table></div><p class="hint" style="margin:10px 0 0">Si tu Premium vence, nunca pierdes tus datos: los sigues viendo y puedes seguir registrando gastos.</p></div>';
+  o+='<div class="g2 precios"><div class="card precio"><small>Mensual</small><b>'+usd(pm)+'</b><span>al mes</span></div><div class="card precio dest"><small>Anual · ahorras '+usd(pm*12-pa)+'</small><b>'+usd(pa)+'</b><span>al año</span></div></div>';
+  if(e.tipo==='admin')return o+'<p class="hint" style="margin:0">Así ven esta pantalla tus usuarios. Tus datos de cobro y los pagos por aprobar están en Perfil → Panel de administrador.</p>';
+  const mc=metodosCobro();
+  o+='<div class="card"><div class="card-h"><div><h2>1. Paga</h2><p class="sub">Usa cualquiera de estos métodos. El monto es en dólares; si pagas en bolívares, usa la tasa del día.</p></div></div>'+
+    (mc.length?'<div class="cobro-list">'+mc.map(([k,n])=>'<div class="cobro"><b>'+n+'</b><pre>'+esc(c[k])+'</pre><button class="btn sm" type="button" data-copiar="'+k+'">Copiar</button></div>').join('')+'</div>':'<p class="muted" style="margin:0">Pronto podrás pagar aquí. Vuelve en unos días.</p>')+'</div>';
+  if(mc.length){
+    if(!rep.metodo)rep.metodo=mc[0][1];
+    o+='<div class="card rep"><div class="card-h"><div><h2>2. Reporta tu pago</h2><p class="sub">Cuando lo verifiquemos, tu cuenta pasa a Premium. Suele tardar menos de un día.</p></div></div>'+
+      '<div class="seg" role="radiogroup" aria-label="Plan"><button type="button" data-per="mes" aria-pressed="'+(rep.periodo==='mes')+'">Mensual · '+usd(pm)+'</button><button type="button" data-per="anio" aria-pressed="'+(rep.periodo==='anio')+'">Anual · '+usd(pa)+'</button></div>'+
+      '<div class="field"><label class="lbl" for="repMet">Método con el que pagaste</label><select class="input" id="repMet">'+mc.map(([,n])=>'<option'+(n===rep.metodo?' selected':'')+'>'+n+'</option>').join('')+'</select></div>'+
+      '<div class="two">'+campo('repRef','Número de referencia',rep.referencia,'maxlength="60" autocomplete="off" placeholder="Ej. 004512"')+campo('repMonto','Monto pagado',rep.monto,'maxlength="30" autocomplete="off" placeholder="Ej. $2 o Bs 2.030"')+'</div>'+
+      '<div class="err"'+(rep.err?'':' hidden')+'>'+esc(rep.err)+'</div><button class="btn primary block" type="button" id="repGo"'+(rep.enviando?' disabled':'')+'>'+(rep.enviando?'Enviando…':'Enviar reporte de pago')+'</button></div>';
+  }
+  if(plan.pagos&&plan.pagos.length){
+    const est={pendiente:['neutral','En revisión'],aprobado:['ok','Aprobado'],rechazado:['bad','Rechazado']};
+    o+='<div class="card"><div class="card-h"><h2>Mis pagos reportados</h2></div><div class="adm-list">'+plan.pagos.map(p=>{const s=est[p.estado]||est.pendiente;return '<div class="adm-row"><div class="adm-main"><b>'+(p.periodo==='anio'?'Anual':'Mensual')+' · '+esc(p.monto)+'</b><span>'+esc(p.metodo)+' · Ref. '+esc(p.referencia)+'</span><small>'+esc(fechaHora(p.creado))+(p.nota?' · '+esc(p.nota):'')+'</small></div><span class="st '+s[0]+'">'+s[1]+'</span></div>'}).join('')+'</div></div>';
+  }
+  return o;
+}
+async function reportarPago(){
+  if(rep.enviando)return;
+  rep.referencia=String(rep.referencia).trim();rep.monto=String(rep.monto).trim();
+  if(rep.referencia.length<3){rep.err='Escribe el número de referencia del pago.';render();return}
+  if(!rep.monto){rep.err='Escribe el monto que pagaste.';render();return}
+  rep.err='';rep.enviando=true;render();
+  try{
+    await api('/rest/v1/pagos',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({user_id:nube.ses.user.id,email:nube.ses.user.email,periodo:rep.periodo,metodo:rep.metodo,referencia:rep.referencia,monto:rep.monto})});
+    Object.assign(rep,{referencia:'',monto:''});toast('¡Recibido! Te avisaremos cuando se apruebe');await cargarMisPagos();
+  }catch(e){if(e.code!=='sin_sesion')rep.err='No se pudo enviar ('+(e.code||'error')+'). Intenta de nuevo.'}
+  rep.enviando=false;render();
+}
+/* Administrador: pagos por aprobar y datos de cobro */
+function adminPagosCard(){
+  if(!(mode==='nube'&&nube.admin))return '';
+  const l=plan.pendientes;
+  let o='<div class="card"><div class="card-h"><div><h2>Pagos por aprobar</h2><p class="sub">Revisa en tu banco o Binance que el pago llegó y luego apruébalo.</p></div><button class="btn sm" type="button" id="pendRec">Actualizar</button></div>';
+  if(!l)return o+'<p class="muted" style="margin:0">Cargando…</p></div>';
+  if(!l.length)return o+'<p class="muted" style="margin:0">No hay pagos pendientes.</p></div>';
+  return o+'<div class="adm-list">'+l.map(p=>'<div class="adm-row pago"><div class="adm-main"><b>'+esc(p.email||'')+'</b><span>'+(p.periodo==='anio'?'Anual':'Mensual')+' · '+esc(p.monto)+' · '+esc(p.metodo)+'</span><small>Ref. '+esc(p.referencia)+' · '+esc(fechaHora(p.creado))+'</small></div><div class="pago-btns"><button class="btn sm" type="button" data-pago="'+p.id+'|0">Rechazar</button><button class="btn sm primary" type="button" data-pago="'+p.id+'|1">Aprobar</button></div></div>').join('')+'</div></div>';
+}
+async function revisarPago(id,ok,btn){
+  if(!ok&&btn.dataset.armed!=='1'){btn.dataset.armed='1';btn.textContent='¿Rechazar?';setTimeout(()=>{if(btn.isConnected){btn.dataset.armed='';btn.textContent='Rechazar'}},3000);return}
+  btn.disabled=true;
+  try{await nubeRpc('revisar_pago',{p_id:+id,p_aprobar:ok,p_nota:ok?null:'No encontramos el pago. Revisa la referencia y repórtalo de nuevo.'});toast(ok?'Pago aprobado: esa cuenta ya es Premium':'Pago rechazado');plan.pendientes=null;render();cargarPendientes();if(nube.usuarios)cargarUsuarios()}
+  catch(e){btn.disabled=false;toast('No se pudo ('+(e.code||'error')+')')}
+}
+const cob={abierto:false,v:{},enviando:false,err:''};
+function adminCobroCard(){
+  if(!(mode==='nube'&&nube.admin))return '';
+  const c=plan.cobro||{};
+  let o='<div class="card"><div class="card-h"><div><h2>Precios y datos de cobro</h2><p class="sub">Lo que ven tus usuarios en la pantalla Premium.</p></div>'+(cob.abierto?'':'<button class="btn sm" type="button" id="cobAbrir">Editar</button>')+'</div>';
+  if(!cob.abierto){
+    const mc=metodosCobro();
+    return o+'<dl class="kv"><dt>Mensual</dt><dd>'+usd(c.precio_mes||2)+'</dd><dt>Anual</dt><dd>'+usd(c.precio_anio||20)+'</dd><dt>Prueba gratis</dt><dd>'+(+c.prueba_dias||30)+' días</dd><dt>Métodos</dt><dd>'+(mc.length?mc.map(([,n])=>n).join(', '):'<span class="muted">Ninguno todavía. Toca Editar y agrega tus datos de Pago Móvil, Binance o Zelle.</span>')+'</dd></dl></div>';
+  }
+  const v=cob.v,ta=(id,l,ph)=>'<div class="field"><label class="lbl" for="cob_'+id+'">'+l+'</label><textarea class="input" id="cob_'+id+'" rows="3" maxlength="300" placeholder="'+ph+'">'+esc(v[id]||'')+'</textarea></div>';
+  return o+'<div class="clave-box"><div class="two">'+campo('cob_precio_mes','Precio mensual ($)',v.precio_mes,'inputmode="decimal" maxlength="8"')+campo('cob_precio_anio','Precio anual ($)',v.precio_anio,'inputmode="decimal" maxlength="8"')+'</div>'+
+    campo('cob_prueba_dias','Días de prueba gratis para cuentas nuevas',v.prueba_dias,'inputmode="numeric" maxlength="3"')+
+    ta('pago_movil','Pago Móvil','Banco, teléfono y cédula. Ej.: Mercantil (0105) · 0412-1234567 · V-12.345.678')+ta('binance','Binance Pay','Tu Pay ID o correo de Binance')+ta('zelle','Zelle','Correo y nombre del titular')+ta('otro','Otro método','Opcional')+
+    '<p class="hint" style="margin:0">Deja vacío el método que no uses. Todo usuario con sesión puede ver estos datos para poder pagarte.</p>'+
+    '<div class="err"'+(cob.err?'':' hidden')+'>'+esc(cob.err)+'</div><div class="two"><button class="btn block" type="button" id="cobCancel">Cancelar</button><button class="btn primary block" type="button" id="cobGuardar"'+(cob.enviando?' disabled':'')+'>'+(cob.enviando?'Guardando…':'Guardar')+'</button></div></div></div>';
+}
+async function guardarCobro(){
+  if(cob.enviando)return;
+  const v=cob.v,n=x=>parseNum(String(x||'').trim());
+  const pm=n(v.precio_mes),pa=n(v.precio_anio),pd=Math.round(n(v.prueba_dias));
+  if(!(pm>0)||!(pa>0)){cob.err='Escribe precios mayores que cero.';render();return}
+  if(!(pd>=0&&pd<=365)){cob.err='Los días de prueba deben estar entre 0 y 365.';render();return}
+  const nuevo={precio_mes:pm,precio_anio:pa,prueba_dias:pd};COBRO_CAMPOS.forEach(([k])=>{nuevo[k]=String(v[k]||'').trim().slice(0,300)});
+  cob.err='';cob.enviando=true;render();
+  try{await nubeRpc('guardar_cobro',{p_cobro:nuevo});plan.cobro=nuevo;cob.abierto=false;toast('Datos de cobro guardados');cargarPlan()}
+  catch(e){cob.err='No se pudo guardar ('+(e.code||'error')+').'}
+  cob.enviando=false;render();
+}
+function planTxt(x){
+  if(x.es_admin)return 'Admin';
+  if(x.premium_hasta&&new Date(x.premium_hasta)>Date.now())return 'Premium hasta '+fechaCorta(x.premium_hasta);
+  const pd=+((plan.cobro||{}).prueba_dias)||30;
+  if(x.creado&&Date.now()-new Date(x.creado)<pd*864e5)return 'En prueba';
+  return 'Gratis';
+}
+/* Límites del plan Gratis en la app (el servidor también los revisa) */
+window.addEventListener('click',e=>{
+  if(esPremium())return;
+  const t=e.target.closest&&e.target.closest('[data-act="nuevo-metodo"],[data-addmet],[data-act="nueva-deuda"],[data-newcat],[data-act="prev"]');if(!t)return;
+  let m='';
+  if(t.matches('[data-act="nuevo-metodo"],[data-addmet]')&&metodos.length>=LIM.metodos)m='metodos';
+  else if(t.matches('[data-act="nueva-deuda"]')&&deudasActivas()>=LIM.deudas)m='deudas';
+  else if(t.matches('[data-newcat]'))m='cats';
+  else if(t.matches('[data-act="prev"]')&&shiftMonth(month,-1)<shiftMonth(today().slice(0,7),-(LIM.meses-1)))m='meses';
+  if(!m)return;
+  e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+  if(SH&&t.closest('#overlay')){toast(MOTIVOS[m]+' Hazte Premium desde tu Perfil.');return}
+  plan.motivo=m;irPremium();
+},true);
+function irPremium(){go('premium');if(mode==='nube'&&nube.ses){if(!plan.pagos)cargarMisPagos()}}
+const REPF={repRef:'referencia',repMonto:'monto'};
+document.addEventListener('input',e=>{const id=e.target.id;if(REPF[id])rep[REPF[id]]=e.target.value;else if(id.startsWith('cob_'))cob.v[id.slice(4)]=e.target.value});
+document.addEventListener('change',e=>{if(e.target.id==='repMet')rep.metodo=e.target.value});
+document.addEventListener('click',e=>{
+  const t=e.target.closest&&e.target.closest('[data-premium],[data-per],#repGo,[data-pago],#pendRec,#cobAbrir,#cobCancel,#cobGuardar,[data-copiar]');if(!t)return;
+  if(t.dataset.premium){plan.motivo='';irPremium()}
+  else if(t.dataset.per){rep.periodo=t.dataset.per;render()}
+  else if(t.id==='repGo')reportarPago();
+  else if(t.dataset.pago){const[id,ok]=t.dataset.pago.split('|');revisarPago(id,ok==='1',t)}
+  else if(t.id==='pendRec'){plan.pendientes=null;render();cargarPendientes()}
+  else if(t.id==='cobAbrir'){const c=plan.cobro||{};cob.v={...c,precio_mes:String(c.precio_mes||2),precio_anio:String(c.precio_anio||20),prueba_dias:String(c.prueba_dias==null?30:c.prueba_dias)};cob.abierto=true;cob.err='';render()}
+  else if(t.id==='cobCancel'){cob.abierto=false;render()}
+  else if(t.id==='cobGuardar')guardarCobro();
+  else if(t.dataset.copiar){const v=(plan.cobro||{})[t.dataset.copiar]||'';try{navigator.clipboard.writeText(v).then(()=>toast('Copiado'),()=>toast('No se pudo copiar'))}catch(x){toast('No se pudo copiar')}}
+});
 function dbFail(e){
   const code=e&&e.code||'error';
   if(!ready()){bannerMsg='No se pudo conectar con tu cuenta ('+code+'). Cierra y vuelve a abrir la app.'}
@@ -944,6 +1127,7 @@ async function del(col,id){
   else{if(col==='metodos')metodos=metodos.filter(x=>x.id!==id);else if(col==='movs')movs=movs.filter(x=>x.id!==id);else deudas=deudas.filter(x=>x.id!==id);saveLocal();render()}
 }
 function errText(e){
+  if(e&&/limite_plan/.test(e.msg||''))return /deudas/.test(e.msg)?'Llegaste a '+LIM.deudas+' deudas activas, el máximo del plan Gratis. Hazte Premium desde tu Perfil.':'Llegaste a '+LIM.metodos+' métodos de pago, el máximo del plan Gratis. Hazte Premium desde tu Perfil.';
   const c=e&&e.code;
   if(c==='timeout')return 'No hubo respuesta al guardar. Revisa tu conexión a internet e intenta de nuevo.';
   if(c==='quota_exceeded')return 'Se llenó el espacio de la app. Elimina movimientos antiguos e intenta de nuevo.';
@@ -983,7 +1167,7 @@ function monthTotals(k){
 /* ---------- Vistas ---------- */
 let view='inicio',month=today().slice(0,7),fTipo='todos',fMet='';
 try{const v=localStorage.getItem(LS+':view');if(['inicio','movs','metodos','deudas','perfil'].includes(v))view=v}catch(e){}
-function go(v){if(v==='perfil'&&mode==='nube'&&nube.admin&&!nube.usuarios)setTimeout(cargarUsuarios,0);view=v;try{localStorage.setItem(LS+':view',v)}catch(e){}render();window.scrollTo(0,0)}
+function go(v){if(v==='perfil'&&mode==='nube'&&nube.admin){if(!nube.usuarios)setTimeout(cargarUsuarios,0);if(!plan.pendientes)setTimeout(cargarPendientes,0)}view=v;try{localStorage.setItem(LS+':view',v)}catch(e){}render();window.scrollTo(0,0)}
 
 function render(){
   const navs=[['inicio','Inicio'],['movs','Movimientos'],['metodos','Métodos de pago'],['deudas','Deudas'],['perfil','Perfil']];
@@ -997,8 +1181,8 @@ function render(){
   if(mode==='nube'&&!legalOk()){document.body.classList.add('onb');$('#view').innerHTML=banner+vAceptar();setStatus('ok','Guardado en tu cuenta');return}
   if(!tienePerfil()){document.body.classList.add('onb');$('#view').innerHTML=banner+vRegistro();const[k0,t0]=statusNow();setStatus(k0,t0);return}
   document.body.classList.remove('onb');
-  const body=({inicio:vInicio,movs:vMovs,metodos:vMetodos,deudas:vDeudas,perfil:vPerfil}[view]||vInicio)();
-  $('#view').innerHTML=banner+body;
+  const body=({inicio:vInicio,movs:vMovs,metodos:vMetodos,deudas:vDeudas,perfil:vPerfil,premium:vPremium}[view]||vInicio)();
+  $('#view').innerHTML=banner+(view==='inicio'?avisoPlan():'')+body;
   const[k,t]=statusNow();setStatus(k,t);
 }
 function header(title,sub,right){return '<div class="top"><div><h1>'+title+'</h1>'+(sub?'<p class="sub">'+sub+'</p>':'')+'<div class="mstatus"><span class="dot" id="mdot"></span><span id="mstatusTxt"></span></div></div><div class="toolbar">'+(right||'')+'</div></div>'}
@@ -1463,8 +1647,8 @@ function vPerfil(){
   o+='<div class="card"><div class="card-h"><div><h2>Mis categorías</h2><p class="sub">Las que creaste. Se agregan desde “+ Nueva categoría” al registrar un movimiento.</p></div></div>'+
     (mc.length?'<div class="chips">'+mc.map(([t,c])=>'<span class="tag catx"><i style="background:'+(t==='gasto'?catCol(c):'var(--c-in)')+'"></i>'+esc(c)+' <small>'+(t==='gasto'?'gasto':'ingreso')+'</small><button type="button" data-delcat="'+t+'|'+esc(c)+'" aria-label="Quitar '+esc(c)+'">×</button></span>').join('')+'</div><p class="hint" style="margin:10px 0 0">Si quitas una, los movimientos que ya la usan la conservan.</p>':'<p class="muted" style="margin:0">Aún no has creado categorías propias.</p>')+'</div>';
   o+='<div class="card"><div class="card-h"><h2>Resumen</h2></div><dl class="kv">'+row('Métodos de pago',String(metodos.length))+row('Movimientos',String(movs.length))+row('Deudas activas',String(deudas.filter(d=>pendiente(d)>0.004).length))+'</dl></div>';
-  o+=adminCard();
-  o+=cuentaCards()+zonaDatosCard();
+  o+=adminCard()+adminPagosCard()+adminCobroCard();
+  o+=planCard()+cuentaCards()+zonaDatosCard();
   if(mode!=='nube')o+='<p class="hint" style="margin:0">'+(mode==='cuenta'?'Versión de prueba: tus datos se guardan en tu cuenta de Claude y solo tú los ves. En la versión para tiendas el registro tendrá verificación de correo y contraseña.':'Versión de prueba: tus datos se guardan solo en este navegador. Si borras los datos del navegador o cambias de dispositivo, no se pasan.')+'</p>';
   return o;
 }
