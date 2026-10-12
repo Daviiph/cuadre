@@ -343,6 +343,19 @@ select.input{padding-right:8px}
   .genrow .btn{grid-column:1/-1}
 }
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .2s ease}@keyframes up{from{transform:translateY(12px)}to{transform:none}}}
+.adm-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.adm-kpis div{background:var(--soft);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.adm-kpis b{font-size:1.4rem;font-weight:800}.adm-kpis small{color:var(--muted);font-size:.78rem}
+.adm-list{display:flex;flex-direction:column}
+.adm-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.adm-row:first-child{border-top:0}
+.avatar.sm{width:38px;height:38px;font-size:.85rem;flex:none}
+.adm-main{min-width:0;flex:1;display:flex;flex-direction:column;gap:1px}
+.adm-main span,.adm-main small{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.adm-main small{font-size:.75rem}
+.adm-last{text-align:right;display:flex;flex-direction:column;flex:none}.adm-last small{color:var(--muted);font-size:.75rem}
+.pasos{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;color:var(--ink)}
+.cod summary{cursor:pointer;color:var(--muted);font-size:.85rem;margin-bottom:8px}
 </style>
 
 <div class="app">
@@ -437,8 +450,10 @@ const CATS={
 
 /* ---------- Datos y guardado ---------- */
 const LS='libreta-simple-v1';
+const SUPA={url:'https://eyakvzsmlvknrdijvsqg.supabase.co',key:'sb_publishable_8Sey-A-XP7BqjjIQYQBsfQ_LnEDYugo'}; // versión web: {url,key} de Supabase (la pone generar_independiente.py)
 let mode='cargando',base=null,metodos=[],movs=[],deudas=[],cfg={},gotM=false,gotV=false,gotC=false,gotD=false,bannerMsg='',lastSaveErr='';
-const ready=()=>mode==='local'||(mode==='cuenta'&&gotM&&gotV&&gotC&&gotD);
+const ready=()=>mode==='local'||mode==='login'||(mode==='nube'&&nube.cargado)||(mode==='cuenta'&&gotM&&gotV&&gotC&&gotD);
+const enCuenta=()=>mode==='cuenta'||mode==='nube';
 const tasa=()=>+cfg.tasa||0;
 function toUSD(v,c){if(c==='USD'||c==='USDT')return v;if(c==='VES'&&tasa())return v/tasa();return null}
 function usdTotal(pairs){let t=0;const miss=[];pairs.forEach(([c,v])=>{const u=toUSD(v,c);if(u==null){if(!miss.includes(c))miss.push(c)}else t+=u});return{t,miss}}
@@ -463,7 +478,7 @@ function defName(t,b){b=(b||'').trim();if(!b)return tipo(t).n;return({debito:'D�
 function setStatus(kind,txt){[['#dot','#statusTxt'],['#mdot','#mstatusTxt']].forEach(([d,t])=>{const a=$(d),b=$(t);if(a)a.className='dot '+kind;if(b)b.textContent=txt})}
 function statusNow(){
   if(lastSaveErr)return['err',lastSaveErr];
-  if(mode==='cuenta')return['ok','Guardado en tu cuenta'];
+  if(enCuenta())return['ok','Guardado en tu cuenta'];
   if(mode==='local')return['ok','Guardado en este dispositivo'];
   return['','Cargando…'];
 }
@@ -473,6 +488,7 @@ const clean=o=>JSON.parse(JSON.stringify(o));
 const sortM=()=>metodos.sort((a,b)=>(a.creado||0)-(b.creado||0));
 
 async function init(){
+  if(SUPA)return initNube();
   const c=null; // versión independiente: guarda solo en este dispositivo
   if(c){
     try{
@@ -498,6 +514,162 @@ function useLocal(){
   try{const d=JSON.parse(localStorage.getItem(LS)||'null');if(d){metodos=Array.isArray(d.metodos)?d.metodos:[];movs=Array.isArray(d.movs)?d.movs.map(normMov):[];deudas=Array.isArray(d.deudas)?d.deudas:[];cfg=d.cfg&&typeof d.cfg==='object'?d.cfg:{};sortM()}}catch(e){}
   render();
 }
+/* ---------- Cuenta en la nube (Supabase): solo en la versión web ---------- */
+const SES_KEY='cuadre-sesion';
+const nube={ses:null,cargado:false,admin:false,usuarios:null,usuariosErr:'',sync:0};
+const login={paso:'correo',correo:'',codigo:'',enviando:false,err:'',info:''};
+function ponerLocal(col,obj){const arr=col==='metodos'?metodos:col==='movs'?movs:deudas;const o=col==='movs'?normMov(obj):obj;const i=arr.findIndex(x=>x.id===o.id);if(i>=0)arr[i]=o;else arr.push(o);sortM()}
+function quitarLocal(col,id){if(col==='metodos')metodos=metodos.filter(x=>x.id!==id);else if(col==='movs')movs=movs.filter(x=>x.id!==id);else deudas=deudas.filter(x=>x.id!==id)}
+function leerSes(){try{const s=JSON.parse(localStorage.getItem(SES_KEY)||'null');return s&&s.access_token&&s.refresh_token&&s.user?s:null}catch(e){return null}}
+function guardarSes(r){const s={access_token:r.access_token,refresh_token:r.refresh_token,expires_at:r.expires_at||Math.floor(Date.now()/1000)+(+r.expires_in||3600),user:{id:r.user.id,email:r.user.email}};nube.ses=s;try{localStorage.setItem(SES_KEY,JSON.stringify(s))}catch(e){}return s}
+function borrarSes(){nube.ses=null;try{localStorage.removeItem(SES_KEY)}catch(e){}}
+async function sfetch(path,opt,ms){
+  opt=opt||{};let r;
+  try{r=await timeout(fetch(SUPA.url+path,{...opt,headers:{apikey:SUPA.key,'Content-Type':'application/json',...(opt.headers||{})}}),ms||15000)}
+  catch(e){throw e&&e.code==='timeout'?e:{code:'sin_conexion'}}
+  let body=null;const t=await r.text();try{body=t?JSON.parse(t):null}catch(e){body=t}
+  if(!r.ok){const m=body&&(body.msg||body.message||body.error_description||body.error)||'';throw{code:'http_'+r.status,status:r.status,msg:String(m),body}}
+  return body;
+}
+let refrescando=null;
+async function token(){
+  const s=nube.ses;if(!s)throw{code:'sin_sesion'};
+  if(s.expires_at-60>Date.now()/1000)return s.access_token;
+  if(!refrescando)refrescando=sfetch('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:s.refresh_token})}).then(guardarSes).finally(()=>{refrescando=null});
+  try{return(await refrescando).access_token}
+  catch(e){if(e.status===400||e.status===401||e.status===403){sesionVencida();throw{code:'sin_sesion'}}throw e}
+}
+async function api(path,opt){
+  opt=opt||{};const tk=await token();
+  try{return await sfetch(path,{...opt,headers:{Authorization:'Bearer '+tk,...(opt.headers||{})}})}
+  catch(e){if(e.status===401){sesionVencida();throw{code:'sin_sesion'}}throw e}
+}
+const nubeRpc=(fn,args)=>api('/rest/v1/rpc/'+fn,{method:'POST',body:JSON.stringify(args||{})});
+const nubePut=(col,id,data)=>api('/rest/v1/docs?on_conflict=user_id,col,id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:nube.ses.user.id,col,id:String(id),data:clean(data),actualizado:new Date().toISOString()})});
+const nubeDel=(col,id)=>api('/rest/v1/docs?col=eq.'+encodeURIComponent(col)+'&id=eq.'+encodeURIComponent(id),{method:'DELETE',headers:{Prefer:'return=minimal'}});
+function sesionVencida(){if(mode!=='nube')return;borrarSes();resetDatos();mode='login';login.paso='correo';login.err='Tu sesión se cerró. Vuelve a entrar con tu correo.';closeSheetSafe();render()}
+function closeSheetSafe(){try{if(SH)closeSheet()}catch(e){}}
+function resetDatos(){metodos=[];movs=[];deudas=[];cfg={};nube.cargado=false;nube.admin=false;nube.usuarios=null}
+function dispositivo(){const u=navigator.userAgent||'';const so=/iPhone/.test(u)?'iPhone':/iPad/.test(u)?'iPad':/Android/.test(u)?'Android':/Windows/.test(u)?'Windows':/Mac OS X|Macintosh/.test(u)?'Mac':/Linux/.test(u)?'Linux':'Otro';const nav=/Edg\//.test(u)?'Edge':/OPR\/|Opera/.test(u)?'Opera':/CriOS|Chrome\//.test(u)?'Chrome':/FxiOS|Firefox\//.test(u)?'Firefox':/Safari\//.test(u)?'Safari':'Navegador';return so+' · '+nav}
+async function initNube(){
+  // Enlace del correo: la sesión llega en la dirección
+  const h=new URLSearchParams((location.hash||'').replace(/^#/,''));
+  if(h.get('access_token')&&h.get('refresh_token')){
+    try{const tk=h.get('access_token');const u=await sfetch('/auth/v1/user',{headers:{Authorization:'Bearer '+tk}});guardarSes({access_token:tk,refresh_token:h.get('refresh_token'),expires_in:+h.get('expires_in')||3600,user:u})}catch(e){}
+    try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
+  }else if(h.get('error_description')){login.err='Ese enlace ya se usó o venció. Pide uno nuevo.';try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
+  nube.ses=leerSes();
+  if(!nube.ses){mode='login';render();return}
+  mode='nube';render();
+  await cargarNube(true);
+}
+async function cargarNube(primera){
+  try{
+    const rows=await api('/rest/v1/docs?select=col,id,data&limit=10000');
+    const M=[],V=[],D=[];let C={};
+    (rows||[]).forEach(r=>{const o={...(r.data||{}),id:r.id};if(r.col==='metodos')M.push(o);else if(r.col==='movs')V.push(normMov(o));else if(r.col==='deudas')D.push(o);else if(r.col==='cfg'&&r.id==='cfg')C=r.data||{}});
+    metodos=M;movs=V;deudas=D;cfg=C;sortM();
+    if(primera&&!(rows||[]).length)await subirDatosLocales();
+    nube.cargado=true;nube.sync=Date.now();
+    if(bannerMsg)bannerMsg='';
+    render();
+    if(primera){const pf=cfg.perfil||{};nubeRpc('marcar_visita',{disp:dispositivo()}).then(a=>{nube.admin=a===true;if(pf.nombre)nubeRpc('guardar_perfil',{p_nombre:pf.nombre,p_apellido:pf.apellido||'',p_nacimiento:pf.nacimiento||null}).catch(()=>{});if(nube.admin&&view==='perfil')cargarUsuarios();render()}).catch(()=>{})}
+  }catch(e){
+    if(e.code==='sin_sesion')return;
+    bannerMsg=nube.cargado?'No se pudieron actualizar tus datos ('+(e.code||'error')+'). Revisa tu conexión.':'No se pudo conectar con tu cuenta ('+(e.code||'error')+'). Revisa tu internet y vuelve a abrir la app.';
+    render();
+  }
+}
+// La primera vez en la nube: si este dispositivo ya tenía datos, se suben a la cuenta
+async function subirDatosLocales(){
+  let d=null;try{d=JSON.parse(localStorage.getItem(LS)||'null')}catch(e){}
+  if(!d)return;
+  const filas=[];const uid=nube.ses.user.id,now=new Date().toISOString();
+  const add=(col,arr)=>(Array.isArray(arr)?arr:[]).forEach(o=>{if(o&&o.id!=null){const{id,...data}=o;filas.push({user_id:uid,col,id:String(id),data,actualizado:now})}});
+  add('metodos',d.metodos);add('movs',d.movs);add('deudas',d.deudas);
+  const c=d.cfg&&typeof d.cfg==='object'?d.cfg:{};
+  if(Object.keys(c).length)filas.push({user_id:uid,col:'cfg',id:'cfg',data:c,actualizado:now});
+  if(!filas.length)return;
+  await api('/rest/v1/docs?on_conflict=user_id,col,id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(filas)});
+  metodos=(Array.isArray(d.metodos)?d.metodos:[]).slice();movs=(Array.isArray(d.movs)?d.movs:[]).map(normMov);deudas=(Array.isArray(d.deudas)?d.deudas:[]).slice();cfg=c;sortM();
+  try{localStorage.setItem(LS+':subido',JSON.stringify(d));localStorage.removeItem(LS)}catch(e){}
+  setTimeout(()=>toast('Pasamos a tu cuenta los datos que tenías en este dispositivo'),300);
+}
+document.addEventListener('visibilitychange',()=>{if(mode==='nube'&&nube.cargado&&document.visibilityState==='visible'&&!SH&&Date.now()-nube.sync>20000)cargarNube(false)});
+setInterval(()=>{if(mode==='nube'&&nube.cargado&&document.visibilityState==='visible'&&!SH&&Date.now()-nube.sync>90000)cargarNube(false)},30000);
+
+window.addEventListener('storage',e=>{if(SUPA&&e.key===SES_KEY&&e.newValue&&mode==='login')location.reload()});
+const correoOk=c=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(c);
+function vLogin(){
+  const cod=login.paso==='codigo';
+  return '<div class="onb-wrap"><div class="card onb-card">'+
+    '<div class="brand-mark big"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5.5"/><path d="M8 9.75h8M8 14.25h8"/></svg></div>'+
+    (cod?'<h1>Revisa tu correo</h1><p class="sub">Te enviamos un enlace a <b>'+esc(login.correo)+'</b>.</p>'+
+      '<ol class="pasos"><li>Abre tu correo <b>en este mismo '+(/Android|iPhone|iPad/.test(navigator.userAgent)?'teléfono':'equipo')+'</b>.</li><li>Busca el mensaje de Supabase (si no está, mira en spam o promociones).</li><li>Toca <b>Log In</b> o el enlace. Se abre Cuadre y entras.</li></ol>'+
+      '<details class="cod"'+(login.codigo?' open':'')+'><summary>¿Te llegó un código de números?</summary>'+campo('lCodigo','Código',login.codigo,'inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Ej. 123456"')+'</details>'
+    :'<h1>Entra a Cuadre</h1><p class="sub">Escribe tu correo y te mandamos un enlace para entrar, sin contraseña. Así ves tus mismos datos en tu celular y en tu computadora.</p>'+
+      campo('lCorreo','Correo electrónico',login.correo,'type="email" inputmode="email" maxlength="80" autocomplete="email" placeholder="tucorreo@ejemplo.com"'))+
+    (login.info?'<p class="hint" style="margin:0;color:var(--accent)">'+esc(login.info)+'</p>':'')+
+    '<div class="err" id="lErr"'+(login.err?'':' hidden')+'>'+esc(login.err)+'</div>'+
+    '<button class="btn '+(cod?'':'primary ')+'block" type="button" id="lGo"'+(cod&&!login.codigo?' hidden':'')+(login.enviando?' disabled':'')+'>'+(login.enviando?(cod?'Entrando…':'Enviando…'):(cod?'Entrar con el código':'Enviarme el enlace'))+'</button>'+
+    (cod?'<div class="two"><button class="btn block" type="button" id="lOtro">Cambiar correo</button><button class="btn block" type="button" id="lReenviar"'+(login.enviando?' disabled':'')+'>Enviar otro enlace</button></div>':'<p class="hint" style="margin:0;text-align:center">Si es tu primera vez, tu cuenta se crea sola. Tus datos son privados: solo tú los ves.</p>')+
+    '</div></div>';
+}
+function loginErr(e,cod){
+  const m=(e&&e.msg||'').toLowerCase();
+  if(e&&(e.code==='sin_conexion'||e.code==='timeout'))return 'No hay conexión. Revisa tu internet e intenta de nuevo.';
+  if(e&&e.status===429||/rate limit|security purposes|seconds/.test(m))return 'Se pidieron muchos correos seguidos. Espera unos minutos e intenta de nuevo.';
+  if(cod&&(/expired|invalid|otp|token/.test(m)||e&&(e.status===403||e.status===401)))return 'El código no es correcto o ya venció. Revísalo o pide uno nuevo.';
+  if(/signups not allowed/.test(m))return 'Por ahora no se aceptan cuentas nuevas.';
+  return 'No se pudo '+(cod?'entrar':'enviar el enlace')+(e&&e.status?' (error '+e.status+')':'')+'. Intenta de nuevo.';
+}
+async function pedirCodigo(){
+  if(login.enviando)return;
+  const c=String(login.correo||'').trim().toLowerCase();
+  if(!correoOk(c)){login.err='Escribe un correo válido, por ejemplo nombre@gmail.com.';render();return}
+  login.correo=c;login.err='';login.info='';login.enviando=true;render();
+  try{await sfetch('/auth/v1/otp',{method:'POST',body:JSON.stringify({email:c,create_user:true})});login.paso='codigo';login.codigo='';login.info=''}
+  catch(e){login.err=loginErr(e,false)}
+  login.enviando=false;render();
+  const f=$(login.paso==='codigo'?'#lCodigo':'#lCorreo');if(f)f.focus();
+}
+async function verificarCodigo(){
+  if(login.enviando)return;
+  const t=String(login.codigo||'').replace(/\D/g,'');
+  if(t.length<6){login.err='Escribe el código completo que te llegó al correo.';render();return}
+  login.err='';login.info='';login.enviando=true;render();
+  try{
+    const r=await sfetch('/auth/v1/verify',{method:'POST',body:JSON.stringify({type:'email',email:login.correo,token:t})});
+    guardarSes(r);login.enviando=false;login.paso='correo';login.codigo='';
+    if(!reg.correo)reg.correo=login.correo;
+    mode='nube';resetDatos();render();await cargarNube(true);return;
+  }catch(e){login.err=loginErr(e,true)}
+  login.enviando=false;render();
+}
+function cerrarSesion(){
+  const s=nube.ses;
+  if(s)sfetch('/auth/v1/logout',{method:'POST',headers:{Authorization:'Bearer '+s.access_token}}).catch(()=>{});
+  borrarSes();resetDatos();login.paso='correo';login.err='';login.info='Cerraste sesión.';mode='login';go('inicio');
+}
+async function cargarUsuarios(){
+  nube.usuariosErr='';
+  try{nube.usuarios=await api('/rest/v1/perfiles?select=email,nombre,apellido,creado,ultima_vez,dispositivo,visitas&order=creado.desc&limit=1000')}
+  catch(e){nube.usuariosErr='No se pudo cargar la lista ('+(e.code||'error')+').'}
+  render();
+}
+function fechaHora(iso){if(!iso)return '';const d=new Date(iso);if(isNaN(d))return '';return d.toLocaleDateString('es-VE',{day:'numeric',month:'short',year:'numeric'})+', '+d.toLocaleTimeString('es-VE',{hour:'numeric',minute:'2-digit'})}
+function haceCuanto(iso){if(!iso)return 'Nunca';const s=(Date.now()-new Date(iso))/1000;if(s<120)return 'Ahora';if(s<3600)return 'Hace '+Math.floor(s/60)+' min';if(s<86400)return 'Hace '+Math.floor(s/3600)+' h';const d=Math.floor(s/86400);return d===1?'Ayer':'Hace '+d+' días'}
+function adminCard(){
+  if(!(mode==='nube'&&nube.admin))return '';
+  const u=nube.usuarios;
+  let o='<div class="card"><div class="card-h"><div><h2>Panel de administrador</h2><p class="sub">Personas registradas en Cuadre. Solo tú ves esta sección.</p></div><button class="btn sm" type="button" id="admRec">Actualizar</button></div>';
+  if(nube.usuariosErr)return o+'<p class="err" style="margin:0">'+esc(nube.usuariosErr)+'</p></div>';
+  if(!u)return o+'<p class="muted" style="margin:0">Cargando…</p></div>';
+  const ahora=Date.now(),d7=u.filter(x=>x.ultima_vez&&ahora-new Date(x.ultima_vez)<7*864e5).length,mes=today().slice(0,7),nuevos=u.filter(x=>(x.creado||'').slice(0,7)===mes).length;
+  o+='<div class="adm-kpis"><div><b>'+u.length+'</b><small>Registrados</small></div><div><b>'+d7+'</b><small>Activos en 7 días</small></div><div><b>'+nuevos+'</b><small>Nuevos este mes</small></div></div>';
+  o+='<div class="adm-list">'+u.map(x=>{const n=[x.nombre,x.apellido].filter(Boolean).join(' ');return '<div class="adm-row"><div class="avatar sm">'+iniciales(n||x.email||'?')+'</div><div class="adm-main"><b>'+esc(n||'Sin perfil aún')+'</b><span>'+esc(x.email||'')+'</span><small>Registro: '+esc(fechaHora(x.creado))+(x.dispositivo?' · '+esc(x.dispositivo):'')+'</small></div><div class="adm-last"><b>'+esc(haceCuanto(x.ultima_vez))+'</b><small>'+(x.visitas||0)+' '+(x.visitas===1?'visita':'visitas')+'</small></div></div>'}).join('')+'</div></div>';
+  return o;
+}
 function dbFail(e){
   const code=e&&e.code||'error';
   if(!ready()){bannerMsg='No se pudo conectar con tu cuenta ('+code+'). Cierra y vuelve a abrir la app.'}
@@ -507,14 +679,17 @@ function dbFail(e){
 function saveLocal(){localStorage.setItem(LS,JSON.stringify({metodos,movs,deudas,cfg}))}
 async function putCfg(obj){
   if(mode==='cuenta')await timeout(base.set(clean(obj)),15000);
+  else if(mode==='nube'){await nubePut('cfg','cfg',obj);const pa=cfg.perfil||{},pn=obj.perfil||{};cfg=clean(obj);render();if(pn.nombre&&(pn.nombre!==pa.nombre||pn.apellido!==pa.apellido||pn.nacimiento!==pa.nacimiento))nubeRpc('guardar_perfil',{p_nombre:pn.nombre||'',p_apellido:pn.apellido||'',p_nacimiento:pn.nacimiento||null}).catch(()=>{})}
   else{cfg=obj;saveLocal();render()}
 }
 async function put(col,obj){
   if(mode==='cuenta'){const{id,...data}=obj;await timeout(base.collection(col).doc(id).set(clean(data)),15000)}
+  else if(mode==='nube'){const{id,...data}=obj;await nubePut(col,id,data);ponerLocal(col,clean(obj));render()}
   else{const arr=col==='metodos'?metodos:col==='movs'?movs:deudas;const i=arr.findIndex(x=>x.id===obj.id);if(i>=0)arr[i]=obj;else arr.push(obj);sortM();saveLocal();render()}
 }
 async function del(col,id){
   if(mode==='cuenta')await timeout(base.collection(col).doc(id).delete(),15000);
+  else if(mode==='nube'){await nubeDel(col,id);quitarLocal(col,id);render()}
   else{if(col==='metodos')metodos=metodos.filter(x=>x.id!==id);else if(col==='movs')movs=movs.filter(x=>x.id!==id);else deudas=deudas.filter(x=>x.id!==id);saveLocal();render()}
 }
 function errText(e){
@@ -557,7 +732,7 @@ function monthTotals(k){
 /* ---------- Vistas ---------- */
 let view='inicio',month=today().slice(0,7),fTipo='todos',fMet='';
 try{const v=localStorage.getItem(LS+':view');if(['inicio','movs','metodos','deudas','perfil'].includes(v))view=v}catch(e){}
-function go(v){view=v;try{localStorage.setItem(LS+':view',v)}catch(e){}render();window.scrollTo(0,0)}
+function go(v){if(v==='perfil'&&mode==='nube'&&nube.admin&&!nube.usuarios)setTimeout(cargarUsuarios,0);view=v;try{localStorage.setItem(LS+':view',v)}catch(e){}render();window.scrollTo(0,0)}
 
 function render(){
   const navs=[['inicio','Inicio'],['movs','Movimientos'],['metodos','Métodos de pago'],['deudas','Deudas'],['perfil','Perfil']];
@@ -565,6 +740,7 @@ function render(){
   const bb=(k,l)=>'<button type="button" data-nav="'+k+'"'+(view===k?' aria-current="page"':'')+'>'+svg(k,1.8)+'<span>'+l+'</span></button>';
   $('#bottombar').innerHTML=bb('inicio','Inicio')+bb('movs','Movimientos')+'<button type="button" class="fab" data-act="nuevo-gasto" aria-label="Registrar movimiento">'+svg('plus',2.6)+'</button>'+bb('metodos','Métodos')+bb('deudas','Deudas')+'<button type="button" data-nav="perfil"'+(view==='perfil'?' aria-current="page"':'')+'>'+svg('persona',1.8)+'<span>Perfil</span></button>';
   const banner=bannerMsg?'<div class="banner"><span>'+esc(bannerMsg)+'</span></div>':'';
+  if(mode==='login'){document.body.classList.add('onb');$('#view').innerHTML=banner+vLogin();setStatus('','Sin iniciar sesión');return}
   if(!ready()){$('#view').innerHTML=banner+'<div class="card">'+'<div class="empty"><b>Cargando tus datos…</b><span>Un momento.</span></div></div>';setStatus('','Cargando…');return}
   if(!tienePerfil()){document.body.classList.add('onb');$('#view').innerHTML=banner+vRegistro();const[k0,t0]=statusNow();setStatus(k0,t0);return}
   document.body.classList.remove('onb');
@@ -1000,13 +1176,13 @@ const reg={nombre:'',apellido:'',nacimiento:'',correo:'',enviando:false,err:''};
 function vRegistro(){
   return '<div class="onb-wrap"><div class="card onb-card">'+
     '<div class="brand-mark big"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5.5"/><path d="M8 9.75h8M8 14.25h8"/></svg></div>'+
-    '<h1>Crea tu perfil</h1><p class="sub">'+(mode==='cuenta'?'Es la primera vez que usas Cuadre con esta cuenta. ':'Es la primera vez que usas Cuadre en este dispositivo. ')+'Completa tus datos para empezar desde cero.</p>'+
+    '<h1>Crea tu perfil</h1><p class="sub">'+(enCuenta()?'Es la primera vez que usas Cuadre con esta cuenta. ':'Es la primera vez que usas Cuadre en este dispositivo. ')+'Completa tus datos para empezar desde cero.</p>'+
     '<div class="two">'+campo('rNombre','Nombre',reg.nombre,'maxlength="40" autocomplete="given-name" placeholder="Ej. Ángel"')+campo('rApellido','Apellido',reg.apellido,'maxlength="40" autocomplete="family-name" placeholder="Ej. González"')+'</div>'+
     campo('rNac','Fecha de nacimiento',reg.nacimiento,'type="date" max="'+today()+'" autocomplete="bday"')+
     campo('rCorreo','Correo electrónico',reg.correo,'type="email" inputmode="email" maxlength="80" autocomplete="email" placeholder="tucorreo@ejemplo.com"')+
     '<div class="err" id="rErr"'+(reg.err?'':' hidden')+'>'+esc(reg.err)+'</div>'+
     '<button class="btn primary block" type="button" id="rSave"'+(reg.enviando?' disabled':'')+'>'+(reg.enviando?'Creando…':'Crear mi perfil y empezar')+'</button>'+
-    '<p class="hint" style="margin:0;text-align:center">'+(mode==='cuenta'?'Tus datos se guardan en tu cuenta y solo tú los ves. Después podrás entrar desde tu celular o tu computadora y verás lo mismo.':'Tus datos se guardan solo en este dispositivo y nadie más los ve.')+'</p>'+
+    '<p class="hint" style="margin:0;text-align:center">'+(enCuenta()?'Tus datos se guardan en tu cuenta y solo tú los ves. Después podrás entrar desde tu celular o tu computadora y verás lo mismo.':'Tus datos se guardan solo en este dispositivo y nadie más los ve.')+'</p>'+
     '</div></div>';
 }
 async function guardarRegistro(){
@@ -1021,7 +1197,7 @@ async function guardarRegistro(){
 function vPerfil(){
   const p=perfil(),x=partes(p),full=nombreCompleto(p);
   let o=header('Mi perfil','Tus datos personales','<button class="btn primary" type="button" data-act="perfil">Editar perfil</button>');
-  o+='<div class="card perfil"><div class="avatar">'+iniciales(full)+'</div><div style="min-width:0"><h2 style="font-size:1.4rem">'+esc(full)+'</h2><p class="sub">'+esc(p.correo||'Sin correo')+'</p><span class="st '+(mode==='cuenta'?'ok':'neutral')+'" style="margin-top:8px">'+(mode==='cuenta'?'Guardado en tu cuenta de Claude':'Guardado solo en este dispositivo')+'</span></div></div>';
+  o+='<div class="card perfil"><div class="avatar">'+iniciales(full)+'</div><div style="min-width:0"><h2 style="font-size:1.4rem">'+esc(full)+'</h2><p class="sub">'+esc(p.correo||'Sin correo')+'</p><span class="st '+(enCuenta()?'ok':'neutral')+'" style="margin-top:8px">'+(mode==='nube'?'Cuenta: '+esc(nube.ses.user.email):mode==='cuenta'?'Guardado en tu cuenta de Claude':'Guardado solo en este dispositivo')+'</span></div></div>';
   const e=edad(p.nacimiento);
   const desde=p.registrado||(()=>{const m=Math.min(...[...metodos,...movs,...deudas].map(z=>z.creado||Infinity));return Number.isFinite(m)?ymd(new Date(m)):''})();
   const row=(k,v)=>'<dt>'+k+'</dt><dd>'+(v||'<span class="muted">—</span>')+'</dd>';
@@ -1034,7 +1210,9 @@ function vPerfil(){
   o+='<div class="card"><div class="card-h"><div><h2>Mis categorías</h2><p class="sub">Las que creaste. Se agregan desde “+ Nueva categoría” al registrar un movimiento.</p></div></div>'+
     (mc.length?'<div class="chips">'+mc.map(([t,c])=>'<span class="tag catx"><i style="background:'+(t==='gasto'?catCol(c):'var(--c-in)')+'"></i>'+esc(c)+' <small>'+(t==='gasto'?'gasto':'ingreso')+'</small><button type="button" data-delcat="'+t+'|'+esc(c)+'" aria-label="Quitar '+esc(c)+'">×</button></span>').join('')+'</div><p class="hint" style="margin:10px 0 0">Si quitas una, los movimientos que ya la usan la conservan.</p>':'<p class="muted" style="margin:0">Aún no has creado categorías propias.</p>')+'</div>';
   o+='<div class="card"><div class="card-h"><h2>Resumen</h2></div><dl class="kv">'+row('Métodos de pago',String(metodos.length))+row('Movimientos',String(movs.length))+row('Deudas activas',String(deudas.filter(d=>pendiente(d)>0.004).length))+'</dl></div>';
-  o+='<p class="hint" style="margin:0">'+(mode==='cuenta'?'Versión de prueba: tus datos se guardan en tu cuenta de Claude y solo tú los ves. En la versión para tiendas el registro tendrá verificación de correo y contraseña.':'Versión de prueba: tus datos se guardan solo en este navegador. Si borras los datos del navegador o cambias de dispositivo, no se pasan.')+'</p>';
+  o+=adminCard();
+  if(mode==='nube')o+='<div class="card"><div class="card-h"><div><h2>Tu cuenta</h2><p class="sub">Entras con <b>'+esc(nube.ses.user.email)+'</b>. En cualquier celular o computadora, entra con este correo y verás tus mismos datos.</p></div><button class="btn" type="button" id="salir">Cerrar sesión</button></div></div>';
+  else o+='<p class="hint" style="margin:0">'+(mode==='cuenta'?'Versión de prueba: tus datos se guardan en tu cuenta de Claude y solo tú los ves. En la versión para tiendas el registro tendrá verificación de correo y contraseña.':'Versión de prueba: tus datos se guardan solo en este navegador. Si borras los datos del navegador o cambias de dispositivo, no se pasan.')+'</p>';
   return o;
 }
 function perfilForm(){
@@ -1350,6 +1528,14 @@ document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#rS
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&REGF[e.target.id]){e.preventDefault();guardarRegistro()}});
 
 render();
+document.addEventListener('input',e=>{if(e.target.id==='lCorreo')login.correo=e.target.value;else if(e.target.id==='lCodigo'){login.codigo=e.target.value;const g=$('#lGo');if(g)g.hidden=!login.codigo}});
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('#lGo,#lOtro,#lReenviar,#salir,#admRec');if(!t)return;
+  if(t.id==='lGo')(login.paso==='codigo'?verificarCodigo:pedirCodigo)();
+  else if(t.id==='lOtro'){login.paso='correo';login.err='';login.info='';render()}
+  else if(t.id==='lReenviar')pedirCodigo();
+  else if(t.id==='salir')cerrarSesion();
+  else if(t.id==='admRec'){nube.usuarios=null;render();cargarUsuarios()}});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.target.id==='lCorreo'||e.target.id==='lCodigo')){e.preventDefault();(e.target.id==='lCodigo'?verificarCodigo:pedirCodigo)()}});
 init();
 })();
 </script>
