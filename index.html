@@ -498,6 +498,25 @@ textarea.input{resize:vertical;min-height:70px;font:inherit}
 .foto-btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .foto-cam{position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;background:var(--surface);color:var(--accent);border:2px solid var(--accent);display:grid;place-items:center}
 .foto-wrap .link{font-size:.78rem;color:var(--muted)}
+/* Sello Premium */
+:root{--oro:#B8912F;--oro-2:#E7CB7A;--oro-ink:#2A2140}
+.prem-sello{display:inline-flex;align-items:center;gap:6px;padding:4px 11px 4px 9px;border-radius:999px;background:linear-gradient(135deg,#2B2142,#151022);color:var(--oro-2);border:1px solid rgba(231,203,122,.5);font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;line-height:1;vertical-align:middle;box-shadow:0 1px 6px rgba(43,33,66,.18);white-space:nowrap}
+.prem-sello .corona{width:14px;height:14px;flex:none}
+.avatar.prem{box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--oro-2),0 4px 14px rgba(184,145,47,.25)}
+.prem-corona{position:absolute;top:-7px;right:-5px;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#2B2142,#151022);color:var(--oro-2);border:1.5px solid var(--oro-2);display:grid;place-items:center;pointer-events:none}
+.prem-corona .corona{width:13px;height:13px}
+.avatar.sm .prem-corona{width:19px;height:19px;top:-6px;right:-6px;border-width:1px}
+.avatar.sm .prem-corona .corona{width:11px;height:11px}
+.foto-btn .prem-corona{width:28px;height:28px;top:-4px;right:-4px}.foto-btn .prem-corona .corona{width:15px;height:15px}
+.plan-card.miembro{background:linear-gradient(135deg,#2B2142 0%,#1A1428 60%,#241B36 100%);color:#F4EFFF;border-color:rgba(231,203,122,.35)}
+.plan-card.miembro h2{color:var(--oro-2)}.plan-card.miembro .sub{color:rgba(244,239,255,.72)}
+.plan-card.miembro .btn{background:transparent;color:var(--oro-2);border-color:rgba(231,203,122,.55)}
+.prem-hola{display:flex;gap:14px;align-items:flex-start;background:linear-gradient(135deg,#2B2142,#151022);color:#F4EFFF;border-color:rgba(231,203,122,.4)}
+.prem-hola-ico{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--oro-2);color:var(--oro-2);display:grid;place-items:center;flex:none}.prem-hola-ico .corona{width:22px;height:22px}
+.prem-hola-txt{flex:1;min-width:0}.prem-hola-txt h2{margin:2px 0 4px;font-size:1.1rem;color:#fff}.prem-hola-txt p{margin:0;color:rgba(244,239,255,.75);font-size:.9rem}
+.prem-eyebrow{font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--oro-2);font-weight:700}
+.prem-hola .x{color:rgba(244,239,255,.7);background:transparent}
+
 </style>
 
 <div class="app">
@@ -1090,11 +1109,23 @@ function estadoPlan(){
   if(i.prueba_hasta&&new Date(i.prueba_hasta)>Date.now())return{tipo:'prueba',titulo:'Prueba gratis de Premium',txt:'Te quedan '+diasHasta(i.prueba_hasta)+' días (hasta el '+fechaCorta(i.prueba_hasta)+').',dias:diasHasta(i.prueba_hasta)};
   return{tipo:'gratis',titulo:'Plan Gratis',txt:'Hasta '+LIM.metodos+' métodos de pago, '+LIM.deudas+' deudas activas y gráficas de los últimos '+LIM.meses+' meses.'};
 }
+/* Sello Premium: corona minimalista para quien pagó la membresía (y el administrador) */
+const icoCorona='<svg class="corona" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.2 17.5 3 8.2l5 3.9L12 5l4 7.1 5-3.9-1.2 9.3z"/><path d="M5.5 20.5h13"/><circle cx="12" cy="5" r=".6" fill="currentColor"/></svg>';
+function esMiembro(){if(mode!=='nube'||!plan.info)return false;const t=estadoPlan().tipo;return t==='premium'||t==='admin'}
+function selloPremium(cls){return esMiembro()?'<span class="prem-sello'+(cls?' '+cls:'')+'" title="Miembro Premium">'+icoCorona+'<span>Premium</span></span>':''}
+const coronaAvatar=()=>esMiembro()?'<span class="prem-corona" aria-hidden="true">'+icoCorona+'</span>':'';
+function bienvenidaPremium(){
+  if(mode!=='nube'||!plan.info||estadoPlan().tipo!=='premium')return '';
+  const k='cuadre-prem-hola:'+nube.ses.user.id;let visto=false;try{visto=localStorage.getItem(k)==='1'}catch(e){}
+  if(visto)return '';
+  return '<div class="card prem-hola"><div class="prem-hola-ico" aria-hidden="true">'+icoCorona+'</div><div class="prem-hola-txt"><span class="prem-eyebrow">Miembro Premium</span><h2>Bienvenido a Cuadre Premium</h2><p>Gracias por apoyar a Cuadre. Ya tienes todas las funciones, sin límites.</p></div><button class="x sm" type="button" id="premHolaOk" aria-label="Cerrar">×</button></div>';
+}
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('#premHolaOk');if(!t)return;try{localStorage.setItem('cuadre-prem-hola:'+nube.ses.user.id,'1')}catch(x){}render()});
 const MOTIVOS={metodos:'Llegaste a '+LIM.metodos+' métodos de pago, el máximo del plan Gratis.',deudas:'Llegaste a '+LIM.deudas+' deudas activas, el máximo del plan Gratis.',cats:'Crear categorías propias es parte de Premium.',meses:'En el plan Gratis ves los últimos '+LIM.meses+' meses.'};
 function planCard(){
   if(mode!=='nube'||!plan.info)return '';
   const e=estadoPlan();
-  return '<div class="card plan-card '+e.tipo+'"><div class="card-h"><div><h2>Mi plan</h2><p class="plan-tit">'+(e.tipo==='gratis'?'':'<span class="plan-chip">PREMIUM</span>')+esc(e.titulo)+'</p><p class="sub">'+esc(e.txt)+'</p></div>'+(e.tipo==='admin'?'':'<button class="btn'+(e.tipo==='premium'?'':' primary')+'" type="button" data-premium="1">'+(e.tipo==='premium'?'Renovar':'Hazte Premium')+'</button>')+'</div></div>';
+  return '<div class="card plan-card '+e.tipo+(esMiembro()?' miembro':'')+'"><div class="card-h"><div><h2>Mi plan</h2><p class="plan-tit">'+(e.tipo==='gratis'?'':esMiembro()?selloPremium():'<span class="plan-chip">PREMIUM</span>')+esc(esMiembro()?(e.tipo==='admin'?'Administrador':'Membresía activa'):e.titulo)+'</p><p class="sub">'+esc(e.txt)+'</p></div>'+(e.tipo==='admin'?'':'<button class="btn'+(e.tipo==='premium'?'':' primary')+'" type="button" data-premium="1">'+(e.tipo==='premium'?'Renovar':'Hazte Premium')+'</button>')+'</div></div>';
 }
 function avisoPlan(){
   if(mode!=='nube'||!plan.info)return '';
@@ -1111,7 +1142,7 @@ function vPremium(){
   const e=estadoPlan(),c=plan.cobro||{},pm=+c.precio_mes||2,pa=+c.precio_anio||20;
   let o=header('Cuadre Premium','Más control sobre tu dinero','<button class="btn" type="button" data-nav="perfil">← Volver</button>');
   if(plan.motivo&&!esPremium())o+='<div class="plan-aviso"><span>'+esc(MOTIVOS[plan.motivo]||'')+' Hazte Premium para seguir.</span></div>';
-  o+='<div class="card plan-card '+e.tipo+'"><p class="plan-tit">'+(e.tipo==='gratis'?'':'<span class="plan-chip">PREMIUM</span>')+'Tu plan: '+esc(e.titulo)+'</p><p class="sub" style="margin:0">'+esc(e.txt)+'</p></div>';
+  o+='<div class="card plan-card '+e.tipo+(esMiembro()?' miembro':'')+'"><p class="plan-tit">'+(e.tipo==='gratis'?'':esMiembro()?selloPremium():'<span class="plan-chip">PREMIUM</span>')+'Tu plan: '+esc(e.titulo)+'</p><p class="sub" style="margin:0">'+esc(e.txt)+'</p></div>';
   const fila=(f,g,p)=>'<tr><td>'+f+'</td><td>'+g+'</td><td>'+p+'</td></tr>';
   o+='<div class="card"><div class="card-h"><h2>Qué incluye</h2></div><div class="tabla-wrap"><table class="plan-tabla"><thead><tr><th>Función</th><th>Gratis</th><th>Premium</th></tr></thead><tbody>'+
     fila('Registrar gastos e ingresos','Sin límite','Sin límite')+fila('Métodos de pago','Hasta '+LIM.metodos,'Ilimitados')+fila('Deudas activas','Hasta '+LIM.deudas,'Ilimitadas')+
@@ -1496,7 +1527,7 @@ document.addEventListener('click',e=>{
   if(t.id==='asisMas'){asis.abierto=!asis.abierto;render();return}
   const k=t.dataset.asisok,ign=asisIgnorados();if(ign.includes(k))return;
   t.disabled=true;
-  putCfg({...cfg,asistente:{...(cfg.asistente||{}),ignorar:[...ign,k].slice(-200)}}).then(()=>toast('Listo, no lo volveremos a sugerir')).catch(err=>{t.disabled=false;toast(errText(err))});
+  patchCfg(c=>({...c,asistente:{...(c.asistente||{}),ignorar:[...new Set([...((c.asistente||{}).ignorar||[]),k])].slice(-200)}})).then(()=>toast('Listo, no lo volveremos a sugerir')).catch(err=>{t.disabled=false;toast(errText(err))});
 });
 /* ---------- Instalar la app en la pantalla de inicio (versión web) ---------- */
 const inst={evt:null,oculto:false};
@@ -1589,12 +1620,13 @@ window.addEventListener('click',e=>{
   if('Notification' in window&&Notification.permission==='default'&&!notifPreguntado())pedirPermisoNotif();
 },true);
 // Tarjeta en Deudas si todavía no hay permiso (por ejemplo, si la persona dijo "Ahora no" o usa iPhone sin instalar)
+let _notifAuto=false;
 function permisoNotifCard(){
   if(mode==='cuenta')return '';
   let oculto=false;try{oculto=localStorage.getItem('cuadre-notif-oculto')==='1'}catch(e){}
   if(oculto)return '';
   const hay='Notification' in window;
-  if(hay&&Notification.permission==='granted'){if(!(cfg.ajustes||{}).notificar&&ready()&&tienePerfil())guardarAjustes({notificar:true}).catch(()=>{});return ''}
+  if(hay&&Notification.permission==='granted'){if(!ajustes().notificar&&!_notifAuto&&ready()&&tienePerfil()){_notifAuto=true;setTimeout(()=>guardarAjustes({notificar:true}).catch(()=>{}),0)}return ''}
   const iosSinInstalar=!hay&&esIOS()&&!enApp();
   if(!hay&&!iosSinInstalar)return '';
   const bloq=hay&&Notification.permission==='denied';
@@ -1626,7 +1658,7 @@ async function guardarAjustes(cambios){
   _ajPend={...(_ajPend||{}),...cambios};
   try{localStorage.setItem(AJ_LS,JSON.stringify(nuevo))}catch(e){}
   aplicarTema();aplicarIdioma();
-  try{if(ready()&&tienePerfil())await putCfg({...cfg,ajustes:nuevo})}
+  try{if(ready()&&tienePerfil())await patchCfg(c=>({...c,ajustes:{...(c.ajustes||{}),...cambios}}))}
   finally{if(_ajPend&&Object.keys(cambios).every(k=>_ajPend[k]===cambios[k]))_ajPend=null}
 }
 const icoEngrane='<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
@@ -1694,7 +1726,7 @@ try{_obs.observe(document.body,{childList:true,subtree:true,characterData:true})
 /* ---------- Diccionario inglés ---------- */
 I18N.dic={
 // Navegación y generales
-'Inicio':'Home','Movimientos':'Transactions','Métodos de pago':'Payment methods','Métodos':'Methods','Deudas':'Debts','Perfil':'Profile','Administrador':'Admin','Configuración':'Settings',
+'Inicio':'Home','Miembro Premium':'Premium member','Membresía activa':'Active membership','Bienvenido a Cuadre Premium':'Welcome to Cuadre Premium','Gracias por apoyar a Cuadre. Ya tienes todas las funciones, sin límites.':'Thanks for supporting Cuadre. You now have every feature, with no limits.','Movimientos':'Transactions','Métodos de pago':'Payment methods','Métodos':'Methods','Deudas':'Debts','Perfil':'Profile','Administrador':'Admin','Configuración':'Settings',
 'Registrar gasto':'Add expense','Registrar movimiento':'Add transaction','Guardado en tu cuenta':'Saved to your account','Guardado en este dispositivo':'Saved on this device','Guardado en tu cuenta de Claude':'Saved to your Claude account',
 'Cargando…':'Loading…','Cargando tus datos…':'Loading your data…','Un momento.':'One moment.','Cancelar':'Cancel','Guardar':'Save','Editar':'Edit','Eliminar':'Delete','Cerrar':'Close','Listo':'Done','Quitar':'Remove','Copiar':'Copy','Copiado':'Copied','Actualizar':'Refresh','Ver todos':'See all','Volver':'Back','← Volver':'← Back','Menú':'Menu','Nuevo':'New','Todos':'All','Resumen':'Summary','Falta':'Missing','Desde':'From','Hacia':'To','Fecha':'Date','Nota':'Note','Monto':'Amount','Moneda':'Currency','Categoría':'Category','Descripción':'Description','Estado':'Status','Mañana':'Tomorrow','Hoy':'Today','Ayer':'Yesterday','Ahora':'Now','Nunca':'Never','Vencido':'Overdue','al mes':'per month','al año':'per year',
 // Inicio
@@ -1820,6 +1852,9 @@ function dbFail(e){
   render();
 }
 function saveLocal(){localStorage.setItem(LS,JSON.stringify({metodos,movs,deudas,cfg}))}
+// Cambios a la configuración en fila: cada uno se aplica sobre la versión más reciente (así uno no borra al otro)
+let _colaCfg=Promise.resolve();
+function patchCfg(fn){const p=_colaCfg.then(async()=>{const obj=fn(clean(cfg||{}));await putCfg(obj);if(mode==='cuenta')cfg=clean(obj)});_colaCfg=p.catch(()=>{});return p}
 async function putCfg(obj){
   if(mode==='cuenta')await timeout(base.set(clean(obj)),15000);
   else if(mode==='nube'){await nubePut('cfg','cfg',obj);const pa=cfg.perfil||{},pn=obj.perfil||{};cfg=clean(obj);render();if(pn.nombre&&(pn.nombre!==pa.nombre||pn.apellido!==pa.apellido||pn.nacimiento!==pa.nacimiento))nubeRpc('guardar_perfil',{p_nombre:pn.nombre||'',p_apellido:pn.apellido||'',p_nacimiento:pn.nacimiento||null}).catch(()=>{})}
@@ -1890,14 +1925,14 @@ function reducirFoto(file){return new Promise((ok,mal)=>{
   img.onerror=()=>{URL.revokeObjectURL(url);mal(new Error('leer'))};img.src=url;
 })}
 async function ponerFoto(file){
-  try{const foto=await reducirFoto(file);await putCfg({...cfg,perfil:{...perfil(),foto}});toast('Foto de perfil actualizada')}
+  try{const foto=await reducirFoto(file);await patchCfg(c=>({...c,perfil:{...(c.perfil||{}),foto}}));toast('Foto de perfil actualizada')}
   catch(e){toast(e&&e.message==='tipo'?'Elige una imagen (JPG o PNG).':e&&e.message==='leer'?'No se pudo abrir esa imagen. Prueba con otra (JPG o PNG).':errText(e))}
 }
 document.addEventListener('click',e=>{
   const t=e.target.closest&&e.target.closest('#fotoCambiar,#fotoQuitar');if(!t)return;
   if(t.id==='fotoCambiar'){const i=$('#fotoIn');if(i){i.value='';i.click()}}
   else if(t.dataset.armed!=='1'){t.dataset.armed='1';t.textContent='¿Quitar?';setTimeout(()=>{if(t.isConnected){t.dataset.armed='';t.textContent='Quitar foto'}},3000)}
-  else{const p={...perfil()};delete p.foto;putCfg({...cfg,perfil:p}).then(()=>toast('Foto quitada')).catch(er=>toast(errText(er)))}
+  else{patchCfg(c=>{const p={...(c.perfil||{})};delete p.foto;return{...c,perfil:p}}).then(()=>toast('Foto quitada')).catch(er=>toast(errText(er)))}
 });
 document.addEventListener('change',e=>{if(e.target.id==='fotoIn'&&e.target.files&&e.target.files[0])ponerFoto(e.target.files[0])});
 let _ajKey='';
@@ -1918,7 +1953,7 @@ function render(){
   document.body.classList.remove('onb');
   const body=({inicio:vInicio,movs:vMovs,metodos:vMetodos,deudas:vDeudas,perfil:vPerfil,premium:vPremium,admin:vAdmin}[view]||vInicio)();
   const _fa=document.activeElement,_fid=_fa&&_fa.id==='admBuscar'?_fa.id:null;
-  $('#view').innerHTML=banner+(view==='inicio'?avisosCard()+avisoPlan()+instalarCard(false):view==='deudas'?permisoNotifCard()+avisosCard():'')+body;
+  $('#view').innerHTML=banner+(view==='inicio'?bienvenidaPremium()+avisosCard()+avisoPlan()+instalarCard(false):view==='deudas'?permisoNotifCard()+avisosCard():'')+body;
   if(ready())setTimeout(revisarNotificaciones,800);
   if(_fid){const i=document.getElementById(_fid);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
   const[k,t]=statusNow();setStatus(k,t);
@@ -1950,7 +1985,7 @@ function metCard(m){
 function vInicio(){
   const h=new Date().getHours();const hola=(h<12?'Buenos días':h<19?'Buenas tardes':'Buenas noches')+(primerNombre()?', '+esc(primerNombre()):'');
   const tasaBtn='<button class="btn" type="button" data-act="tasa">'+tasasTxt()+'</button>';
-  let o=header(hola,cap(new Intl.DateTimeFormat('es',{weekday:'long',day:'numeric',month:'long'}).format(new Date())),'<button type="button" class="avatar sm" data-nav="perfil" aria-label="Mi perfil" title="Mi perfil">'+caraPerfil()+'</button>'+tasaBtn);
+  let o=header(hola,cap(new Intl.DateTimeFormat('es',{weekday:'long',day:'numeric',month:'long'}).format(new Date())),'<button type="button" class="avatar sm'+(esMiembro()?' prem':'')+'" data-nav="perfil" aria-label="Mi perfil" title="Mi perfil">'+caraPerfil()+coronaAvatar()+'</button>'+tasaBtn);
   if(!metodos.length)return o+welcome();
   const disp=sumCur(metodos.filter(m=>!isCred(m)).map(m=>[m.moneda,saldo(m)]));
   const deuda=sumCur(metodos.filter(isCred).map(m=>[m.moneda,Math.max(0,saldo(m))]));
@@ -2376,7 +2411,7 @@ async function guardarRegistro(){
 function vPerfil(){
   const p=perfil(),x=partes(p),full=nombreCompleto(p);
   let o=header('Mi perfil','Tus datos personales','<button class="btn primary" type="button" data-act="perfil">Editar perfil</button>');
-  o+='<div class="card perfil"><div class="foto-wrap"><button type="button" class="avatar foto-btn" id="fotoCambiar" aria-label="Cambiar foto de perfil" title="Cambiar foto">'+caraPerfil()+'<span class="foto-cam" aria-hidden="true">'+icoCamara+'</span></button>'+(perfil().foto?'<button type="button" class="link sm" id="fotoQuitar">Quitar foto</button>':'')+'<input type="file" id="fotoIn" accept="image/*" hidden></div><div style="min-width:0"><div class="nombre-v"><h2 style="font-size:1.4rem">'+esc(full)+'</h2>'+verifBadge()+'</div><p class="sub">'+esc(p.correo||'Sin correo')+'</p>'+(mode==='nube'?'':'<span class="st '+(enCuenta()?'ok':'neutral')+'" style="margin-top:8px">'+(mode==='cuenta'?'Guardado en tu cuenta de Claude':'Guardado solo en este dispositivo')+'</span>')+'</div></div>';
+  o+='<div class="card perfil"><div class="foto-wrap"><button type="button" class="avatar foto-btn'+(esMiembro()?' prem':'')+'" id="fotoCambiar" aria-label="Cambiar foto de perfil" title="Cambiar foto">'+caraPerfil()+coronaAvatar()+'<span class="foto-cam" aria-hidden="true">'+icoCamara+'</span></button>'+(perfil().foto?'<button type="button" class="link sm" id="fotoQuitar">Quitar foto</button>':'')+'<input type="file" id="fotoIn" accept="image/*" hidden></div><div style="min-width:0"><div class="nombre-v"><h2 style="font-size:1.4rem">'+esc(full)+'</h2>'+verifBadge()+selloPremium()+'</div><p class="sub">'+esc(p.correo||'Sin correo')+'</p>'+(mode==='nube'?'':'<span class="st '+(enCuenta()?'ok':'neutral')+'" style="margin-top:8px">'+(mode==='cuenta'?'Guardado en tu cuenta de Claude':'Guardado solo en este dispositivo')+'</span>')+'</div></div>';
   const e=edad(p.nacimiento);
   const desde=p.registrado||(()=>{const m=Math.min(...[...metodos,...movs,...deudas].map(z=>z.creado||Infinity));return Number.isFinite(m)?ymd(new Date(m)):''})();
   const row=(k,v)=>'<dt>'+k+'</dt><dd>'+(v||'<span class="muted">—</span>')+'</dd>';
