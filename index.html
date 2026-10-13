@@ -391,7 +391,7 @@ select.input{padding-right:8px}
 .legal>.btn.sm{align-self:flex-start}
 .plan-tit{margin:4px 0 2px;font-weight:800;font-size:1.05rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .plan-chip{background:var(--accent);color:var(--accent-ink);font-size:.68rem;font-weight:800;letter-spacing:.06em;padding:3px 8px;border-radius:999px}
-.plan-card.premium,.plan-card.admin,.plan-card.prueba{background:linear-gradient(135deg,var(--accent-soft),var(--surface) 70%)}
+.plan-card.premium,.plan-card.admin,.plan-card.prueba,.plan-card.bono{background:linear-gradient(135deg,var(--accent-soft),var(--surface) 70%)}
 .plan-aviso{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--accent-soft);color:var(--ink);padding:12px 14px;border-radius:14px;font-weight:600;font-size:.9rem}
 .tabla-wrap{overflow-x:auto}
 .plan-tabla{width:100%;border-collapse:collapse;font-size:.9rem}
@@ -498,6 +498,20 @@ textarea.input{resize:vertical;min-height:70px;font:inherit}
 .foto-btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .foto-cam{position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;background:var(--surface);color:var(--accent);border:2px solid var(--accent);display:grid;place-items:center}
 .foto-wrap .link{font-size:.78rem;color:var(--muted)}
+/* Referidos */
+.ref-cod{display:flex;flex-direction:column;align-items:center;gap:4px;margin:14px 0 12px;padding:16px;border-radius:14px;background:var(--accent-soft)}
+.ref-cod .lbl{font-size:.78rem;color:var(--muted);font-weight:600}
+.ref-cod b{font-size:1.7rem;letter-spacing:.14em;color:var(--accent);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.ref-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.ref-stats div{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px;border-radius:12px;background:var(--soft);text-align:center}
+.ref-stats b{font-size:1.3rem}.ref-stats span{font-size:.74rem;color:var(--muted);line-height:1.2}
+.ref-list{display:flex;flex-direction:column;margin-top:12px}
+.ref-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.ref-row .avatar.sm{width:36px;height:36px;font-size:.85rem}
+.ref-main{flex:1;min-width:0;display:flex;flex-direction:column}.ref-main small{color:var(--muted);font-size:.78rem}
+.ref-tag{font-size:.72rem;font-weight:700;padding:4px 8px;border-radius:999px;background:var(--soft);color:var(--muted);white-space:nowrap}
+.ref-tag.pago{background:var(--pos-soft);color:var(--pos)}
+
 /* Cuadre Rápido */
 body.modo-rapido .side,body.modo-rapido .bottombar,body.modo-rapido .mtop{display:none!important}
 body.modo-rapido .app{grid-template-columns:minmax(0,1fr)}
@@ -1204,7 +1218,7 @@ const ICO_COBRO={
 const icoCobro=k=>'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+(ICO_COBRO[k]||ICO_COBRO.otro)+'</svg>';
 const metodosCobro=()=>COBRO_CAMPOS.filter(([k])=>plan.cobro&&String(plan.cobro[k]||'').trim());
 async function cargarPlan(){
-  try{const[i,a]=await Promise.all([nubeRpc('mi_plan',{}),api('/rest/v1/ajustes?select=cobro&id=eq.1')]);plan.info=i||{premium:false};plan.cobro=(a&&a[0]&&a[0].cobro)||{};render()}
+  try{const[i,a]=await Promise.all([nubeRpc('mi_plan',{}),api('/rest/v1/ajustes?select=cobro&id=eq.1')]);plan.info=i||{premium:false};plan.cobro=(a&&a[0]&&a[0].cobro)||{};render();cargarRef()}
   catch(e){}
 }
 async function cargarMisPagos(){try{plan.pagos=await api('/rest/v1/pagos?select=id,periodo,metodo,referencia,monto,estado,nota,creado&user_id=eq.'+nube.ses.user.id+'&order=creado.desc&limit=20');render()}catch(e){}}
@@ -1213,6 +1227,7 @@ function estadoPlan(){
   const i=plan.info||{};
   if(i.admin)return{tipo:'admin',titulo:'Premium · Administrador',txt:'Eres el administrador: tienes Premium siempre.'};
   if(i.premium_hasta&&new Date(i.premium_hasta)>Date.now())return{tipo:'premium',titulo:'Premium',txt:'Activo hasta el '+fechaCorta(i.premium_hasta)+'.',dias:diasHasta(i.premium_hasta)};
+  if(i.bono_hasta&&new Date(i.bono_hasta)>Date.now())return{tipo:'bono',titulo:'Premium por referidos',txt:'Ganado invitando amigos. Activo hasta el '+fechaCorta(i.bono_hasta)+'.',dias:diasHasta(i.bono_hasta)};
   if(i.prueba_hasta&&new Date(i.prueba_hasta)>Date.now())return{tipo:'prueba',titulo:'Prueba gratis de Premium',txt:'Te quedan '+diasHasta(i.prueba_hasta)+' días (hasta el '+fechaCorta(i.prueba_hasta)+').',dias:diasHasta(i.prueba_hasta)};
   return{tipo:'gratis',titulo:'Plan Gratis',txt:'Hasta '+LIM.metodos+' métodos de pago, '+LIM.deudas+' deudas activas y gráficas de los últimos '+LIM.meses+' meses.'};
 }
@@ -1237,7 +1252,7 @@ function planCard(){
 function avisoPlan(){
   if(mode!=='nube'||!plan.info)return '';
   const e=estadoPlan();
-  if((e.tipo==='prueba'||e.tipo==='premium')&&e.dias<=5)return '<div class="plan-aviso"><span>'+(e.tipo==='prueba'?'Tu prueba de Premium termina':'Tu Premium vence')+(e.dias<=1?' mañana':' en '+e.dias+' días')+'.</span><button class="btn sm primary" type="button" data-premium="1">'+(e.tipo==='prueba'?'Hazte Premium':'Renovar')+'</button></div>';
+  if((e.tipo==='prueba'||e.tipo==='premium'||e.tipo==='bono')&&e.dias<=5)return '<div class="plan-aviso"><span>'+(e.tipo==='prueba'?'Tu prueba de Premium termina':e.tipo==='bono'?'Tu Premium por referidos vence':'Tu Premium vence')+(e.dias<=1?' mañana':' en '+e.dias+' días')+'.</span><button class="btn sm primary" type="button" data-premium="1">'+(e.tipo==='prueba'?'Hazte Premium':'Renovar')+'</button></div>';
   return '';
 }
 /* Pantalla Premium */
@@ -1279,6 +1294,7 @@ function vPremium(){
     const est={pendiente:['neutral','En revisión'],aprobado:['ok','Aprobado'],rechazado:['bad','Rechazado']};
     o+='<div class="card"><div class="card-h"><h2>Mis pagos reportados</h2></div><div class="adm-list">'+plan.pagos.map(p=>{const s=est[p.estado]||est.pendiente;return '<div class="adm-row pago"><div class="adm-main"><b>'+(p.periodo==='anio'?'Anual':'Mensual')+' · '+esc(p.monto)+'</b><span>'+esc(p.metodo)+' · Ref. '+esc(p.referencia)+'</span><small>'+esc(fechaHora(p.creado))+(p.nota?' · '+esc(p.nota):'')+'</small></div><div class="pago-btns">'+(p.estado==='pendiente'&&p.metodo==='Binance Pay'?'<button class="btn sm" type="button" data-verif="'+p.id+'">Verificar</button>':'')+'<span class="st '+s[0]+'">'+s[1]+'</span></div></div>'}).join('')+'</div></div>';
   }
+  o+=referidosCard();
   return o;
 }
 async function reportarPago(){
@@ -1389,6 +1405,58 @@ document.addEventListener('click',e=>{
   else if(t.id==='cobCancel'){cob.abierto=false;render()}
   else if(t.id==='cobGuardar')guardarCobro();
   else if(t.dataset.copiar){const v=(plan.cobro||{})[t.dataset.copiar]||'';try{navigator.clipboard.writeText(v).then(()=>toast('Copiado'),()=>toast('No se pudo copiar'))}catch(x){toast('No se pudo copiar')}}
+});
+
+/* ---------- Referidos: invita y gana semanas de Premium ---------- */
+const REF_PEND='cuadre-ref-pend';
+const ref={info:null,codigo:'',enviando:false,err:'',ok:''};
+try{const c=(new URLSearchParams(location.search).get('ref')||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12);if(c)localStorage.setItem(REF_PEND,c)}catch(e){}
+const refPend=()=>{try{return localStorage.getItem(REF_PEND)||''}catch(e){return ''}};
+const REF_ERR={no_existe:'Ese código no existe. Revísalo con quien te invitó.',propio:'Ese es tu propio código: compártelo con tus amigos.',ya_usado:'Ya usaste un código de referido.',muy_tarde:'El código de quien te invitó solo se puede usar en las 2 primeras semanas de tu cuenta.',circular:'No puedes usar el código de alguien que tú invitaste.',mismo_equipo:'Ese código es de otra cuenta abierta en este mismo equipo.',sin_perfil:'Completa tu perfil primero.'};
+async function cargarRef(){
+  if(mode!=='nube'||!nube.ses)return;
+  try{ref.info=await nubeRpc('mi_referido',{})||null}catch(e){ref.info=null;return}
+  const pc=refPend();
+  if(pc&&ref.info){
+    if(ref.info.puede_usar&&pc!==ref.info.codigo)await usarCodigo(pc,true);
+    try{localStorage.removeItem(REF_PEND)}catch(e){}
+  }
+  render();
+}
+async function usarCodigo(c,auto){
+  c=String(c||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(!c){ref.err='Escribe el código de quien te invitó.';render();return}
+  ref.enviando=true;ref.err='';render();
+  try{
+    const r=await nubeRpc('usar_codigo_ref',{p_codigo:c});
+    if(r&&r.ok){ref.codigo='';toast('¡Listo! Le regalaste a '+r.nombre+' una semana de Premium');ref.info=await nubeRpc('mi_referido',{})||ref.info}
+    else if(!auto)ref.err=REF_ERR[(r||{}).error]||'No se pudo usar ese código.';
+  }catch(e){if(!auto)ref.err=errText(e)}
+  ref.enviando=false;render();
+}
+const refLink=()=>{const u=new URL('./',location.href);u.search='?ref='+encodeURIComponent(ref.info.codigo);return u.href};
+function referidosCard(){
+  if(mode!=='nube'||!ref.info||!ref.info.codigo)return '';
+  const i=ref.info,l=i.referidos||[],pagaron=l.filter(x=>x.pago).length,semanas=l.length+pagaron;
+  let o='<div class="card ref-card"><div class="card-h"><div><h2>Invita y gana Premium</h2><p class="sub">Por cada amigo que se registre con tu código ganas <b>1 semana de Premium</b>. Si además paga Premium, ganas <b>1 semana más</b>.</p></div></div>';
+  o+='<div class="ref-cod"><span class="lbl">Tu código</span><b id="refCodigo">'+esc(i.codigo)+'</b></div>';
+  o+='<div class="two"><button class="btn primary" type="button" id="refCompartir">Compartir invitación</button><button class="btn" type="button" id="refCopiar">Copiar código</button></div>';
+  o+='<div class="ref-stats"><div><b>'+l.length+'</b><span>'+(l.length===1?'amigo invitado':'amigos invitados')+'</span></div><div><b>'+pagaron+'</b><span>'+(pagaron===1?'pagó Premium':'pagaron Premium')+'</span></div><div><b>'+semanas+'</b><span>'+(semanas===1?'semana ganada':'semanas ganadas')+'</span></div></div>';
+  if(l.length)o+='<div class="ref-list">'+l.map(x=>'<div class="ref-row"><div class="avatar sm">'+iniciales(x.nombre||'?')+'</div><div class="ref-main"><b>'+esc(x.nombre)+'</b><small>'+(x.fecha?'Se unió el '+esc(fechaCorta(x.fecha)):'')+'</small></div>'+(x.pago?'<span class="ref-tag pago">Pagó Premium · +2 semanas</span>':'<span class="ref-tag">Registrado · +1 semana</span>')+'</div>').join('')+'</div>';
+  else o+='<p class="muted" style="margin:12px 0 0">Aún no has invitado a nadie. Comparte tu código y empieza a ganar semanas.</p>';
+  if(i.referido_por)o+='<p class="hint" style="margin:12px 0 0">Te invitó <b>'+esc(i.referido_por)+'</b>.</p>';
+  else if(i.puede_usar)o+='<div class="field" style="margin-top:14px"><label class="lbl" for="refUsar">¿Te invitó alguien? Escribe su código</label><div class="newcat"><input class="input" id="refUsar" maxlength="12" autocomplete="off" autocapitalize="characters" placeholder="Ej. MARIA7K2" value="'+esc(ref.codigo)+'"><button class="btn sm primary" type="button" id="refUsarGo"'+(ref.enviando?' disabled':'')+'>'+(ref.enviando?'Enviando…':'Usar código')+'</button></div><span class="hint">Así le regalas una semana de Premium a quien te invitó.</span>'+(ref.err?'<span class="err-txt">'+esc(ref.err)+'</span>':'')+'</div>';
+  return o+'</div>';
+}
+document.addEventListener('input',e=>{if(e.target.id==='refUsar')ref.codigo=e.target.value});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='refUsar'){e.preventDefault();usarCodigo(ref.codigo)}});
+document.addEventListener('click',e=>{
+  const t=e.target.closest&&e.target.closest('#refCompartir,#refCopiar,#refUsarGo');if(!t||!ref.info)return;
+  if(t.id==='refUsarGo'){usarCodigo(ref.codigo);return}
+  const txt='Te invito a Cuadre, la app para llevar tus finanzas en dólares y bolívares. Regístrate con mi código '+ref.info.codigo+': '+refLink();
+  const copiar=v=>(navigator.clipboard?navigator.clipboard.writeText(v):Promise.reject()).then(()=>toast(t.id==='refCopiar'?'Código copiado':'Invitación copiada: pégala en WhatsApp o donde quieras')).catch(()=>toast(v));
+  if(t.id==='refCopiar'){copiar(ref.info.codigo);return}
+  if(navigator.share)navigator.share({title:'Cuadre',text:txt}).catch(()=>{});else copiar(txt);
 });
 /* ---------- Ventana Administrador (solo cuentas administradoras) ----------
    Pensada para miles de usuarios: el resumen lo calcula el servidor y las listas
@@ -1947,7 +2015,7 @@ try{_obs.observe(document.body,{childList:true,subtree:true,characterData:true})
 /* ---------- Diccionario inglés ---------- */
 I18N.dic={
 // Navegación y generales
-'Inicio':'Home','Miembro Premium':'Premium member','Hora':'Time','Cuadre Rápido':'Cuadre Quick','Total restante':'Remaining total','Ingresos del mes':'Income this month','Egresos del mes':'Expenses this month','Abrir Cuadre completo →':'Open full Cuadre →','Abrir Cuadre Rápido':'Open Cuadre Quick','Copiar enlace':'Copy link','Ver Cuadre Rápido':'View Cuadre Quick','Enlace copiado':'Link copied','Primero agrega un método de pago':'Add a payment method first','Un acceso directo en tu pantalla de inicio: al tocarlo ves al instante ingresos, egresos y tu total restante, y registras con un toque. Sin entrar a toda la app.':'A shortcut on your home screen: tap it to instantly see income, expenses and your remaining total, and record with one tap. No need to open the whole app.','En Android también puedes mantener presionado el ícono de Cuadre para ver atajos: Registrar gasto, Registrar ingreso y Cuadre Rápido.':'On Android you can also press and hold the Cuadre icon for shortcuts: Add expense, Add income and Cuadre Quick.','Modo sin conexión':'Offline mode','Sin internet.':'No internet.','Listo: se subió a la nube el cambio que hiciste sin internet':'Done: the change you made offline was uploaded','Puedes seguir usando Cuadre normalmente.':'You can keep using Cuadre as usual.','Lo que registres se guarda en este equipo y se sube solo a tu cuenta cuando vuelva la conexión.':'Whatever you add is saved on this device and uploads to your account automatically when you\'re back online.','Sin internet · usando lo guardado aquí':'Offline · using data saved here','Mis categorías':'My categories','Crea tus propias categorías. Toca una para cambiarle el nombre.':'Create your own categories. Tap one to rename it.','Gastos':'Expenses','Ingresos':'Income','Agregar':'Add','Ej. Seguro, Peluquería':'e.g. Insurance, Haircut','Ej. Alquiler, Comisiones':'e.g. Rent, Commissions','Aún no tienes categorías propias de gastos.':'You have no custom expense categories yet.','Aún no tienes categorías propias de ingresos.':'You have no custom income categories yet.','Cambiar nombre':'Rename','Escribe el nombre de la categoría.':'Type the category name.','Membresía activa':'Active membership','Bienvenido a Cuadre Premium':'Welcome to Cuadre Premium','Gracias por apoyar a Cuadre. Ya tienes todas las funciones, sin límites.':'Thanks for supporting Cuadre. You now have every feature, with no limits.','Movimientos':'Transactions','Métodos de pago':'Payment methods','Métodos':'Methods','Deudas':'Debts','Perfil':'Profile','Administrador':'Admin','Configuración':'Settings',
+'Inicio':'Home','Miembro Premium':'Premium member','Hora':'Time','Invita y gana Premium':'Invite and earn Premium','Tu código':'Your code','Compartir invitación':'Share invite','Copiar código':'Copy code','Código copiado':'Code copied','Invitación copiada: pégala en WhatsApp o donde quieras':'Invite copied: paste it in WhatsApp or anywhere','amigo invitado':'friend invited','amigos invitados':'friends invited','pagaron Premium':'paid Premium','pagó Premium':'paid Premium','semana ganada':'week earned','semanas ganadas':'weeks earned','Pagó Premium · +2 semanas':'Paid Premium · +2 weeks','Registrado · +1 semana':'Signed up · +1 week','Aún no has invitado a nadie. Comparte tu código y empieza a ganar semanas.':'You haven\'t invited anyone yet. Share your code and start earning weeks.','¿Te invitó alguien? Escribe su código':'Did someone invite you? Enter their code','Usar código':'Use code','Así le regalas una semana de Premium a quien te invitó.':'This gives the person who invited you a week of Premium.','Premium por referidos':'Premium from referrals','Tu Premium por referidos vence':'Your referral Premium expires','Escribe el código de quien te invitó.':'Enter the code of the person who invited you.','Ese código no existe. Revísalo con quien te invitó.':'That code doesn\'t exist. Check it with whoever invited you.','Ese es tu propio código: compártelo con tus amigos.':'That\'s your own code: share it with your friends.','Ya usaste un código de referido.':'You already used a referral code.','El código de quien te invitó solo se puede usar en las 2 primeras semanas de tu cuenta.':'A referral code can only be used in your account\'s first 2 weeks.','No puedes usar el código de alguien que tú invitaste.':'You can\'t use the code of someone you invited.','Ese código es de otra cuenta abierta en este mismo equipo.':'That code belongs to another account on this same device.','No se pudo usar ese código.':'That code couldn\'t be used.','Cuadre Rápido':'Cuadre Quick','Total restante':'Remaining total','Ingresos del mes':'Income this month','Egresos del mes':'Expenses this month','Abrir Cuadre completo →':'Open full Cuadre →','Abrir Cuadre Rápido':'Open Cuadre Quick','Copiar enlace':'Copy link','Ver Cuadre Rápido':'View Cuadre Quick','Enlace copiado':'Link copied','Primero agrega un método de pago':'Add a payment method first','Un acceso directo en tu pantalla de inicio: al tocarlo ves al instante ingresos, egresos y tu total restante, y registras con un toque. Sin entrar a toda la app.':'A shortcut on your home screen: tap it to instantly see income, expenses and your remaining total, and record with one tap. No need to open the whole app.','En Android también puedes mantener presionado el ícono de Cuadre para ver atajos: Registrar gasto, Registrar ingreso y Cuadre Rápido.':'On Android you can also press and hold the Cuadre icon for shortcuts: Add expense, Add income and Cuadre Quick.','Modo sin conexión':'Offline mode','Sin internet.':'No internet.','Listo: se subió a la nube el cambio que hiciste sin internet':'Done: the change you made offline was uploaded','Puedes seguir usando Cuadre normalmente.':'You can keep using Cuadre as usual.','Lo que registres se guarda en este equipo y se sube solo a tu cuenta cuando vuelva la conexión.':'Whatever you add is saved on this device and uploads to your account automatically when you\'re back online.','Sin internet · usando lo guardado aquí':'Offline · using data saved here','Mis categorías':'My categories','Crea tus propias categorías. Toca una para cambiarle el nombre.':'Create your own categories. Tap one to rename it.','Gastos':'Expenses','Ingresos':'Income','Agregar':'Add','Ej. Seguro, Peluquería':'e.g. Insurance, Haircut','Ej. Alquiler, Comisiones':'e.g. Rent, Commissions','Aún no tienes categorías propias de gastos.':'You have no custom expense categories yet.','Aún no tienes categorías propias de ingresos.':'You have no custom income categories yet.','Cambiar nombre':'Rename','Escribe el nombre de la categoría.':'Type the category name.','Membresía activa':'Active membership','Bienvenido a Cuadre Premium':'Welcome to Cuadre Premium','Gracias por apoyar a Cuadre. Ya tienes todas las funciones, sin límites.':'Thanks for supporting Cuadre. You now have every feature, with no limits.','Movimientos':'Transactions','Métodos de pago':'Payment methods','Métodos':'Methods','Deudas':'Debts','Perfil':'Profile','Administrador':'Admin','Configuración':'Settings',
 'Registrar gasto':'Add expense','Registrar movimiento':'Add transaction','Guardado en tu cuenta':'Saved to your account','Guardado en este dispositivo':'Saved on this device','Guardado en tu cuenta de Claude':'Saved to your Claude account',
 'Cargando…':'Loading…','Cargando tus datos…':'Loading your data…','Un momento.':'One moment.','Cancelar':'Cancel','Guardar':'Save','Editar':'Edit','Eliminar':'Delete','Cerrar':'Close','Listo':'Done','Quitar':'Remove','Copiar':'Copy','Copiado':'Copied','Actualizar':'Refresh','Ver todos':'See all','Volver':'Back','← Volver':'← Back','Menú':'Menu','Nuevo':'New','Todos':'All','Resumen':'Summary','Falta':'Missing','Desde':'From','Hacia':'To','Fecha':'Date','Nota':'Note','Monto':'Amount','Moneda':'Currency','Categoría':'Category','Descripción':'Description','Estado':'Status','Mañana':'Tomorrow','Hoy':'Today','Ayer':'Yesterday','Ahora':'Now','Nunca':'Never','Vencido':'Overdue','al mes':'per month','al año':'per year',
 // Inicio
@@ -2071,6 +2139,13 @@ I18N.reglas.push(
   [/^Tienes (\d+) cambios? guardados? en este equipo; se suben solos a tu cuenta cuando vuelva la conexión\.$/,(_,n)=>'You have '+n+(n==='1'?' change':' changes')+' saved on this device; '+(n==='1'?'it uploads':'they upload')+' to your account automatically when you\'re back online.'],
   [/^Listo: se subieron a la nube los (\d+) cambios que hiciste sin internet$/,(_,n)=>'Done: the '+n+' changes you made offline were uploaded'],
   [/^Tienes (\d+) cambios? sin subir\. Conéctate a internet para no perderlos, o toca Cerrar sesión otra vez\.$/,(_,n)=>'You have '+n+' unsynced '+(n==='1'?'change':'changes')+'. Go online so you don\'t lose '+(n==='1'?'it':'them')+', or tap Sign out again.']
+);
+I18N.reglas.push(
+  [/^Por cada amigo que se registre con tu código ganas$/,()=>'For every friend who signs up with your code you get'],
+  [/^1 semana de Premium$/,()=>'1 week of Premium'],[/^1 semana más$/,()=>'1 more week'],[/^\. Si además paga Premium, ganas$/,()=>'. If they also pay for Premium, you get'],
+  [/^Se unió el (.+)$/,(_,a)=>'Joined '+(_fecha(a)||a)],[/^Te invitó$/,()=>'Invited by'],
+  [/^Ganado invitando amigos\. Activo hasta el (.+)\.$/,(_,a)=>'Earned by inviting friends. Active until '+(_fecha(a)||a)+'.'],
+  [/^¡Listo! Le regalaste a (.+) una semana de Premium$/,(_,a)=>'Done! You gave '+a+' a week of Premium']
 );
 function dbFail(e){
   const code=e&&e.code||'error';
@@ -2657,7 +2732,7 @@ function vPerfil(){
     row('Usando Cuadre desde',desde?esc(longDate(desde)):'')+'</dl></div>';
   o+='<div class="card"><div class="card-h"><h2>Resumen</h2></div><dl class="kv">'+row('Métodos de pago',String(metodos.length))+row('Movimientos',String(movs.length))+row('Deudas activas',String(deudas.filter(d=>pendiente(d)>0.004).length))+'</dl></div>';
   o+=accesoAdminCard();
-  o+=planCard()+instalarCard(true)+rapidoCard()+cuentaCards()+zonaDatosCard();
+  o+=planCard()+referidosCard()+instalarCard(true)+rapidoCard()+cuentaCards()+zonaDatosCard();
   if(mode!=='nube')o+='<p class="hint" style="margin:0">'+(mode==='cuenta'?'Versión de prueba: tus datos se guardan en tu cuenta de Claude y solo tú los ves. En la versión para tiendas el registro tendrá verificación de correo y contraseña.':'Versión de prueba: tus datos se guardan solo en este navegador. Si borras los datos del navegador o cambias de dispositivo, no se pasan.')+'</p>';
   return o;
 }
