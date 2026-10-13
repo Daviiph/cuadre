@@ -410,6 +410,20 @@ textarea.input{resize:vertical;min-height:70px;font:inherit}
 .bin-box{display:flex;flex-direction:column;gap:4px;background:var(--accent-soft);padding:12px 14px;border-radius:14px;font-size:.9rem;line-height:1.45}
 .bin-box b:first-child{font-size:1rem}
 .dev-ico{background:var(--soft);color:var(--ink)}
+.mtop{align-items:center;justify-content:space-between}
+.mtop-adm{display:inline-flex;align-items:center;gap:6px}.mtop-adm .i{width:16px;height:16px}
+.mtop-adm[aria-current="page"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.adm-tabs{display:flex;flex-wrap:wrap}.adm-tabs button{flex:1 1 auto;white-space:nowrap}
+.adm-tabs .num{display:inline-block;min-width:18px;padding:0 5px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:.7rem;line-height:18px}
+.pbadge{display:inline-block;font-size:.62rem;font-weight:800;letter-spacing:.06em;padding:2px 7px;border-radius:999px;vertical-align:middle}
+.pbadge.mem{background:var(--accent);color:var(--accent-ink)}
+.pbadge.gratis{background:var(--soft);color:var(--muted)}
+.pbadge.admin{background:var(--ink);color:var(--surface)}
+.adm-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:6px}.adm-tools .input{flex:1;min-width:180px}
+.chips-f{display:flex;gap:6px}
+.chip-f{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-weight:600;font-size:.82rem;cursor:pointer;color:var(--ink)}
+.chip-f[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.adm-add{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}.adm-add .field{flex:1;min-width:220px;margin:0}
 </style>
 
 <div class="app">
@@ -419,7 +433,7 @@ textarea.input{resize:vertical;min-height:70px;font:inherit}
     <nav class="nav" id="nav"></nav>
     <div class="status"><span class="dot" id="dot"></span><span id="statusTxt">Cargando…</span></div>
   </aside>
-  <main><header class="mtop"><div class="brand" aria-label="Cuadre"><div class="brand-mark"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5.5"/><path d="M8 9.75h8M8 14.25h8"/></svg></div><b>Cuadre</b></div></header><div class="wrap" id="view"></div></main>
+  <main><header class="mtop"><div class="brand" aria-label="Cuadre"><div class="brand-mark"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5.5"/><path d="M8 9.75h8M8 14.25h8"/></svg></div><b>Cuadre</b></div><span id="mtopAdm"></span></header><div class="wrap" id="view"></div></main>
 </div>
 <nav class="bottombar" id="bottombar" aria-label="Menú"></nav>
 <div class="overlay" id="overlay" hidden></div>
@@ -460,7 +474,8 @@ const P={
   ingreso:'<path d="M12 19V5M6 11l6-6 6 6"/>',
   transfer:'<path d="M4 8h14l-3-3M20 16H6l3 3"/>',
   deudas:'<path d="M12 3v18M16.5 7.5c0-1.9-2-3-4.5-3s-4.5 1.1-4.5 3 2 2.6 4.5 3 4.5 1.2 4.5 3.2-2 3-4.5 3-4.5-1.1-4.5-3"/>',
-  persona:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>'
+  persona:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
+  admin:'<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>'
 };
 const svg=(k,w)=>'<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="'+(w||2)+'" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+P[k]+'</svg>';
 const TIPOS=[
@@ -860,7 +875,7 @@ document.addEventListener('click',e=>{
   else if(t.id==='lReVerif'||t.id==='lReVerif2')reenviarVerif();
   else if(t.dataset.ver){const i=$('#'+t.dataset.ver);if(i){const v=i.type==='password';i.type=v?'text':'password';t.textContent=v?'Ocultar':'Ver';t.setAttribute('aria-label',v?'Ocultar contraseña':'Mostrar contraseña')}}
   else if(t.id==='salir')cerrarSesion();
-  else if(t.id==='admRec'){nube.usuarios=null;render();cargarUsuarios()}
+  else if(t.id==='admRec'){nube.usuarios=null;nube.dispositivos=null;plan.pendientes=null;render();cargarUsuarios();cargarPendientes()}
   else if(t.id==='cAbrir'){cuentaClave.abierta=true;cuentaClave.err='';render();const f=$('#cClave');if(f)f.focus()}
   else if(t.id==='cCancel'){Object.assign(cuentaClave,{abierta:false,clave:'',clave2:'',err:''});render()}
   else if(t.id==='cSave')guardarClaveCuenta();
@@ -868,7 +883,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const id=e.target.id;if(LOGIN_CAMPOS[id]){e.preventDefault();id==='lCodigo'?codigoEntrar():accion()}else if(id==='cClave'||id==='cClave2'){e.preventDefault();guardarClaveCuenta()}});
 /* ---------- Términos, privacidad y control de tus datos (versión web) ---------- */
-const TERMINOS_V='2026-10-12.2';
+const TERMINOS_V='2026-10-12.3';
 const LEGAL_CONTACTO=''; // correo de contacto público (lo pone generar_independiente.py)
 let verLegal=false;
 const legalOk=()=>!!(nube.ses&&nube.ses.user.terminos===TERMINOS_V);
@@ -892,7 +907,7 @@ function vLegal(){
   '<h2>2. Política de privacidad</h2>'+
   '<h3>Qué datos guardamos</h3><ul><li><b>De tu cuenta:</b> correo y contraseña. La contraseña se guarda cifrada; nadie puede leerla, ni siquiera nosotros.</li><li><b>De tu perfil:</b> nombre, apellido y fecha de nacimiento. Teléfono y país solo si los escribes.</li><li><b>Tus finanzas:</b> lo que registras: métodos de pago, movimientos, deudas, tasas y categorías.</li><li><b>Datos técnicos:</b> fecha de registro, última vez que abriste la app, cuántas veces entraste, el tipo de dispositivo y navegador (por ejemplo “Android · Chrome”) y la dirección IP de la última conexión de cada dispositivo. No guardamos tu ubicación exacta.</li></ul>'+
   '<h3>Para qué los usamos</h3><p>Solo para darte el servicio: guardar tus datos, mostrártelos en todos tus dispositivos, proteger tu cuenta (por ejemplo, detectar accesos desde dispositivos extraños) y saber cuántas personas usan la app. No los vendemos, no los alquilamos y no los usamos para publicidad.</p>'+
-  '<h3>Quién puede verlos</h3><ul><li><b>Tus datos financieros:</b> solo tú. La base de datos tiene reglas que impiden que otra cuenta los lea.</li><li><b>El administrador de Cuadre</b> puede ver, para llevar control y seguridad de la app: nombre, correo, fecha de registro, última visita, número de visitas, los dispositivos desde los que entras con su dirección IP, el plan y si la cuenta está verificada. No puede ver tus montos, movimientos ni deudas.</li><li><b>Proveedores:</b> Supabase guarda la base de datos y envía los correos (servidores en Londres, Reino Unido). GitHub Pages aloja la página de la app. Ellos procesan los datos solo para prestar ese servicio.</li><li><b>Autoridades:</b> solo si una ley u orden judicial válida lo exige.</li></ul>'+
+  '<h3>Quién puede verlos</h3><ul><li><b>Tus datos financieros:</b> solo tú. La base de datos tiene reglas que impiden que otra cuenta los lea.</li><li><b>Los administradores de Cuadre</b> (el dueño y las personas que él autorice, como un familiar de confianza o un contador) pueden ver, para llevar control y seguridad de la app: nombre, correo, fecha de registro, última visita, número de visitas, los dispositivos desde los que entras con su dirección IP, el plan y si la cuenta está verificada. No puede ver tus montos, movimientos ni deudas.</li><li><b>Proveedores:</b> Supabase guarda la base de datos y envía los correos (servidores en Londres, Reino Unido). GitHub Pages aloja la página de la app. Ellos procesan los datos solo para prestar ese servicio.</li><li><b>Autoridades:</b> solo si una ley u orden judicial válida lo exige.</li></ul>'+
   '<h3>Cómo los protegemos</h3><p>Conexión cifrada (HTTPS) en todo momento, contraseñas cifradas, verificación de correo, reglas de acceso por usuario en la base de datos y cierre de sesión cuando un acceso vence.</p>'+
   '<h3>Tus derechos</h3><ul><li><b>Ver y corregir</b> tus datos: en Perfil → Editar perfil.</li><li><b>Descargar</b> todos tus datos: Perfil → Descargar mis datos.</li><li><b>Eliminar</b> tu cuenta y todos tus datos de forma permanente: Perfil → Eliminar mi cuenta.</li><li>Para cualquier otra solicitud escribe a '+c+'.</li></ul>'+
   '<h3>Cuánto tiempo los guardamos</h3><p>Mientras tengas tu cuenta. Los dispositivos y sus direcciones IP se borran solos después de 90 días sin uso. Si eliminas tu cuenta, borramos de inmediato tu perfil, tus dispositivos y todos tus datos financieros.</p>'+
@@ -903,7 +918,7 @@ function vLegal(){
 function vAceptar(){
   return '<div class="onb-wrap"><div class="card onb-card">'+
     '<div class="brand-mark big"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5.5"/><path d="M8 9.75h8M8 14.25h8"/></svg></div>'+
-    '<h1>Antes de seguir</h1><p class="sub">Actualizamos los Términos de uso y la Política de privacidad de Cuadre (ahora guardamos los dispositivos y la IP de conexión, por seguridad). En resumen: tus datos financieros son solo tuyos, no los vendemos, y puedes descargarlos o eliminar tu cuenta cuando quieras.</p>'+
+    '<h1>Antes de seguir</h1><p class="sub">Actualizamos los Términos de uso y la Política de privacidad de Cuadre (guardamos los dispositivos y la IP de conexión por seguridad, y el equipo administrador puede incluir personas de confianza como un contador). En resumen: tus datos financieros son solo tuyos, no los vendemos, y puedes descargarlos o eliminar tu cuenta cuando quieras.</p>'+
     '<a href="#" class="lnk" data-legal="1">Leer los términos completos</a>'+
     '<label class="check"><input type="checkbox" id="acTerm"'+(acept.marcado?' checked':'')+'><span>Leí y acepto los <a href="#" class="lnk" data-legal="1">Términos de uso y la Política de privacidad</a>.</span></label>'+
     '<div class="err"'+(acept.err?'':' hidden')+'>'+esc(acept.err)+'</div>'+
@@ -1143,6 +1158,80 @@ document.addEventListener('click',e=>{
   else if(t.id==='cobGuardar')guardarCobro();
   else if(t.dataset.copiar){const v=(plan.cobro||{})[t.dataset.copiar]||'';try{navigator.clipboard.writeText(v).then(()=>toast('Copiado'),()=>toast('No se pudo copiar'))}catch(x){toast('No se pudo copiar')}}
 });
+/* ---------- Ventana Administrador (solo cuentas administradoras) ---------- */
+let admTab='personas',admFiltro='todos',admBuscar='';
+const equipo={correo:'',enviando:false,err:''};
+const esAdminNube=()=>mode==='nube'&&nube.admin;
+const yo=()=>(nube.usuarios||[]).find(x=>nube.ses&&x.id===nube.ses.user.id)||{};
+function cargarAdmin(){if(!esAdminNube())return;if(!nube.usuarios)cargarUsuarios();if(!plan.pendientes)cargarPendientes()}
+function planBadge(x){
+  if(x.es_admin)return{k:'admin',t:'ADMIN',s:x.es_dueno?'Dueño':'Administrador'};
+  if(x.premium_hasta&&new Date(x.premium_hasta)>Date.now())return{k:'mem',t:'MEMBRESÍA',s:'Hasta '+fechaCorta(x.premium_hasta)};
+  const pd=+((plan.cobro||{}).prueba_dias)||30;
+  if(x.creado&&Date.now()-new Date(x.creado)<pd*864e5)return{k:'gratis',t:'GRATIS',s:'En prueba de Premium'};
+  return{k:'gratis',t:'GRATIS',s:x.premium_hasta?'Su membresía venció':''};
+}
+function accesoAdminCard(){
+  if(!esAdminNube())return '';
+  return '<div class="card"><div class="card-h"><div><h2>Administrador</h2><p class="sub">Personas, pagos, dispositivos, precios y tu equipo, en su propia ventana.</p></div><button class="btn primary" type="button" data-nav="admin">'+svg('admin',2)+'Abrir</button></div></div>';
+}
+function vAdmin(){
+  if(!esAdminNube())return header('Administrador','')+'<div class="card"><p style="margin:0">Esta sección es solo para administradores.</p></div>';
+  const pend=(plan.pendientes||[]).length;
+  const T=(k,l,n)=>'<button type="button" data-admtab="'+k+'" aria-pressed="'+(admTab===k)+'">'+l+(n?' <span class="num">'+n+'</span>':'')+'</button>';
+  let o=header('Administrador','Solo lo ven los administradores de Cuadre','<button class="btn" type="button" id="admRec">Actualizar</button>');
+  o+='<div class="seg adm-tabs" role="group" aria-label="Secciones">'+T('personas','Personas')+T('pagos','Pagos',pend)+T('dispositivos','Dispositivos')+T('cobro','Cobro')+T('equipo','Equipo')+'</div>';
+  if(admTab==='personas')o+=personasCard();
+  else if(admTab==='pagos')o+=adminPagosCard();
+  else if(admTab==='dispositivos')o+=dispositivosCard();
+  else if(admTab==='cobro')o+=adminCobroCard();
+  else o+=equipoCard();
+  return o;
+}
+function personasCard(){
+  const u=nube.usuarios;
+  if(nube.usuariosErr)return '<div class="card"><p class="err" style="margin:0">'+esc(nube.usuariosErr)+'</p></div>';
+  if(!u)return '<div class="card"><p class="muted" style="margin:0">Cargando…</p></div>';
+  const mem=u.filter(x=>planBadge(x).k==='mem').length,gr=u.filter(x=>planBadge(x).k==='gratis').length,d7=u.filter(x=>x.ultima_vez&&Date.now()-new Date(x.ultima_vez)<7*864e5).length;
+  const q=admBuscar.trim().toLowerCase();
+  const lista=u.filter(x=>{const k=planBadge(x).k;if(admFiltro==='mem'&&k==='gratis')return false;if(admFiltro==='gratis'&&k!=='gratis')return false;return !q||([x.nombre,x.apellido,x.email].join(' ').toLowerCase().includes(q))});
+  const F=(k,l)=>'<button type="button" class="chip-f" data-admf="'+k+'" aria-pressed="'+(admFiltro===k)+'">'+l+'</button>';
+  let o='<div class="adm-kpis"><div><b>'+u.length+'</b><small>Registrados</small></div><div><b>'+mem+'</b><small>Con membresía</small></div><div><b>'+gr+'</b><small>Gratis</small></div><div><b>'+d7+'</b><small>Activos en 7 días</small></div></div>';
+  o+='<div class="card"><div class="card-h"><div><h2>Personas</h2><p class="sub">Quién usa la app y su plan. Sus gastos y datos siguen siendo privados.</p></div></div>'+
+    '<div class="adm-tools"><input class="input" id="admBuscar" type="search" placeholder="Buscar nombre o correo" value="'+esc(admBuscar)+'"><div class="chips-f">'+F('todos','Todos')+F('mem','Membresía')+F('gratis','Gratis')+'</div></div>';
+  if(!lista.length)return o+'<p class="muted" style="margin:14px 0 0">No hay personas que coincidan.</p></div>';
+  return o+'<div class="adm-list">'+lista.map(x=>{const n=[x.nombre,x.apellido].filter(Boolean).join(' '),p=planBadge(x);
+    return '<div class="adm-row"><div class="avatar sm">'+iniciales(n||x.email||'?')+'</div><div class="adm-main"><b>'+esc(n||'Sin perfil aún')+' <span class="pbadge '+p.k+'">'+p.t+'</span>'+(x.verificado?' <span class="vbadge sm" title="Verificado">'+icoVerif+'</span>':'')+'</b><span>'+esc(x.email||'')+'</span><small>'+(p.s?esc(p.s)+' · ':'')+'Registro: '+esc(fechaCorta(x.creado))+'</small></div><div class="adm-last"><b>'+esc(haceCuanto(x.ultima_vez))+'</b><small>'+(x.visitas||0)+' '+(x.visitas===1?'visita':'visitas')+'</small></div></div>'}).join('')+'</div></div>';
+}
+function equipoCard(){
+  const u=nube.usuarios;if(!u)return '<div class="card"><p class="muted" style="margin:0">Cargando…</p></div>';
+  const admins=u.filter(x=>x.es_admin),soyDueno=!!yo().es_dueno;
+  let o='<div class="card"><div class="card-h"><div><h2>Equipo administrador</h2><p class="sub">Estas personas pueden abrir la ventana Administrador: ven las personas registradas, sus dispositivos, los pagos y los precios. Nunca ven los gastos ni el dinero de nadie.</p></div></div><div class="adm-list">'+
+    admins.map(x=>{const n=[x.nombre,x.apellido].filter(Boolean).join(' ');return '<div class="adm-row"><div class="avatar sm">'+iniciales(n||x.email)+'</div><div class="adm-main"><b>'+esc(n||'Sin perfil aún')+' <span class="pbadge admin">'+(x.es_dueno?'DUEÑO':'ADMIN')+'</span></b><span>'+esc(x.email||'')+'</span></div>'+(soyDueno&&!x.es_dueno?'<button class="btn sm danger" type="button" data-quitaradm="'+esc(x.email)+'">Quitar</button>':'')+'</div>'}).join('')+'</div></div>';
+  if(!soyDueno)return o+'<p class="hint" style="margin:0">Solo el dueño de Cuadre puede agregar o quitar administradores.</p>';
+  return o+'<div class="card"><div class="card-h"><div><h2>Agregar administrador</h2><p class="sub">Por ejemplo tu esposa o un contador. Primero esa persona debe crear su cuenta en Cuadre con su correo.</p></div></div>'+
+    '<div class="adm-add">'+campo('eqCorreo','Correo de su cuenta en Cuadre',equipo.correo,'type="email" inputmode="email" maxlength="80" autocomplete="off" placeholder="correo@ejemplo.com"')+
+    '<button class="btn primary" type="button" id="eqGo"'+(equipo.enviando?' disabled':'')+'>'+(equipo.enviando?'Guardando…':'Hacer administrador')+'</button></div>'+
+    '<div class="err"'+(equipo.err?'':' hidden')+' style="margin-top:12px">'+esc(equipo.err)+'</div></div>';
+}
+async function ponerAdmin(correo,si,btn){
+  correo=String(correo||'').trim().toLowerCase();
+  if(si&&!correoOk(correo)){equipo.err='Escribe un correo válido.';render();return}
+  if(!si&&btn&&btn.dataset.armed!=='1'){btn.dataset.armed='1';btn.textContent='¿Quitar?';setTimeout(()=>{if(btn.isConnected){btn.dataset.armed='';btn.textContent='Quitar'}},3000);return}
+  equipo.err='';equipo.enviando=true;render();
+  try{await nubeRpc('poner_admin',{p_email:correo,p_admin:si});if(si)equipo.correo='';toast(si?'Listo: '+correo+' ya es administrador':'Quitaste a '+correo+' como administrador');nube.usuarios=null;await cargarUsuarios()}
+  catch(e){const m=(e&&e.msg)||'';equipo.err=/no_encontrado/.test(m)?'No hay ninguna cuenta con ese correo. Pídele que primero cree su cuenta en Cuadre.':/solo_dueno/.test(m)?'Solo el dueño puede cambiar administradores.':/function|poner_admin/.test(m)||e.status===404?'Falta activar esta función en Supabase (te paso el texto para pegar).':'No se pudo guardar ('+(e.code||'error')+').';if(!si)toast(equipo.err)}
+  equipo.enviando=false;render();
+}
+document.addEventListener('input',e=>{if(e.target.id==='admBuscar'){admBuscar=e.target.value;render();const i=$('#admBuscar');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}else if(e.target.id==='eqCorreo')equipo.correo=e.target.value});
+document.addEventListener('click',e=>{
+  const t=e.target.closest&&e.target.closest('[data-admtab],[data-admf],#eqGo,[data-quitaradm]');if(!t)return;
+  if(t.dataset.admtab){admTab=t.dataset.admtab;render();window.scrollTo(0,0)}
+  else if(t.dataset.admf){admFiltro=t.dataset.admf;render()}
+  else if(t.id==='eqGo')ponerAdmin(equipo.correo,true);
+  else if(t.dataset.quitaradm)ponerAdmin(t.dataset.quitaradm,false,t);
+});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='eqCorreo'){e.preventDefault();ponerAdmin(equipo.correo,true)}});
 function dbFail(e){
   const code=e&&e.code||'error';
   if(!ready()){bannerMsg='No se pudo conectar con tu cuenta ('+code+'). Cierra y vuelve a abrir la app.'}
@@ -1206,13 +1295,14 @@ function monthTotals(k){
 /* ---------- Vistas ---------- */
 let view='inicio',month=today().slice(0,7),fTipo='todos',fMet='';
 try{const v=localStorage.getItem(LS+':view');if(['inicio','movs','metodos','deudas','perfil'].includes(v))view=v}catch(e){}
-function go(v){if(v==='perfil'&&mode==='nube'&&nube.admin){if(!nube.usuarios)setTimeout(cargarUsuarios,0);if(!plan.pendientes)setTimeout(cargarPendientes,0)}view=v;try{localStorage.setItem(LS+':view',v)}catch(e){}render();window.scrollTo(0,0)}
+function go(v){if(v==='admin'){if(!esAdminNube())v='inicio';else setTimeout(cargarAdmin,0)}view=v;try{localStorage.setItem(LS+':view',v)}catch(e){}render();window.scrollTo(0,0)}
 
 function render(){
-  const navs=[['inicio','Inicio'],['movs','Movimientos'],['metodos','Métodos de pago'],['deudas','Deudas'],['perfil','Perfil']];
+  const navs=[['inicio','Inicio'],['movs','Movimientos'],['metodos','Métodos de pago'],['deudas','Deudas'],['perfil','Perfil']].concat(esAdminNube()?[['admin','Administrador']]:[]);
   $('#nav').innerHTML=navs.map(([k,l])=>'<button type="button" data-nav="'+k+'"'+(view===k?' aria-current="page"':'')+'>'+(k==='perfil'?svg('persona',1.8):svg(k,1.8))+'<span>'+l+'</span></button>').join('');
   const bb=(k,l)=>'<button type="button" data-nav="'+k+'"'+(view===k?' aria-current="page"':'')+'>'+svg(k,1.8)+'<span>'+l+'</span></button>';
   $('#bottombar').innerHTML=bb('inicio','Inicio')+bb('movs','Movimientos')+'<button type="button" class="fab" data-act="nuevo-gasto" aria-label="Registrar movimiento">'+svg('plus',2.6)+'</button>'+bb('metodos','Métodos')+bb('deudas','Deudas')+'<button type="button" data-nav="perfil"'+(view==='perfil'?' aria-current="page"':'')+'>'+svg('persona',1.8)+'<span>Perfil</span></button>';
+  const ma=$('#mtopAdm');if(ma)ma.innerHTML=esAdminNube()?'<button class="btn sm mtop-adm" type="button" data-nav="admin"'+(view==='admin'?' aria-current="page"':'')+'>'+svg('admin',2)+'Administrador</button>':'';
   const banner=bannerMsg?'<div class="banner"><span>'+esc(bannerMsg)+'</span></div>':'';
   if(verLegal){document.body.classList.add('onb');$('#view').innerHTML=vLegal();return}
   if(mode==='login'){document.body.classList.add('onb');$('#view').innerHTML=banner+vLogin();setStatus('','Sin iniciar sesión');return}
@@ -1220,7 +1310,7 @@ function render(){
   if(mode==='nube'&&!legalOk()){document.body.classList.add('onb');$('#view').innerHTML=banner+vAceptar();setStatus('ok','Guardado en tu cuenta');return}
   if(!tienePerfil()){document.body.classList.add('onb');$('#view').innerHTML=banner+vRegistro();const[k0,t0]=statusNow();setStatus(k0,t0);return}
   document.body.classList.remove('onb');
-  const body=({inicio:vInicio,movs:vMovs,metodos:vMetodos,deudas:vDeudas,perfil:vPerfil,premium:vPremium}[view]||vInicio)();
+  const body=({inicio:vInicio,movs:vMovs,metodos:vMetodos,deudas:vDeudas,perfil:vPerfil,premium:vPremium,admin:vAdmin}[view]||vInicio)();
   $('#view').innerHTML=banner+(view==='inicio'?avisoPlan():'')+body;
   const[k,t]=statusNow();setStatus(k,t);
 }
@@ -1686,7 +1776,7 @@ function vPerfil(){
   o+='<div class="card"><div class="card-h"><div><h2>Mis categorías</h2><p class="sub">Las que creaste. Se agregan desde “+ Nueva categoría” al registrar un movimiento.</p></div></div>'+
     (mc.length?'<div class="chips">'+mc.map(([t,c])=>'<span class="tag catx"><i style="background:'+(t==='gasto'?catCol(c):'var(--c-in)')+'"></i>'+esc(c)+' <small>'+(t==='gasto'?'gasto':'ingreso')+'</small><button type="button" data-delcat="'+t+'|'+esc(c)+'" aria-label="Quitar '+esc(c)+'">×</button></span>').join('')+'</div><p class="hint" style="margin:10px 0 0">Si quitas una, los movimientos que ya la usan la conservan.</p>':'<p class="muted" style="margin:0">Aún no has creado categorías propias.</p>')+'</div>';
   o+='<div class="card"><div class="card-h"><h2>Resumen</h2></div><dl class="kv">'+row('Métodos de pago',String(metodos.length))+row('Movimientos',String(movs.length))+row('Deudas activas',String(deudas.filter(d=>pendiente(d)>0.004).length))+'</dl></div>';
-  o+=adminCard()+dispositivosCard()+adminPagosCard()+adminCobroCard();
+  o+=accesoAdminCard();
   o+=planCard()+cuentaCards()+zonaDatosCard();
   if(mode!=='nube')o+='<p class="hint" style="margin:0">'+(mode==='cuenta'?'Versión de prueba: tus datos se guardan en tu cuenta de Claude y solo tú los ves. En la versión para tiendas el registro tendrá verificación de correo y contraseña.':'Versión de prueba: tus datos se guardan solo en este navegador. Si borras los datos del navegador o cambias de dispositivo, no se pasan.')+'</p>';
   return o;
