@@ -635,7 +635,7 @@ function leerSes(){try{const s=JSON.parse(localStorage.getItem(SES_KEY)||'null')
 function userInfo(u){return{id:u.id,email:u.email,verificado:!!(u.email_confirmed_at||u.confirmed_at),conClave:!!(u.user_metadata&&u.user_metadata.con_clave),terminos:(u.user_metadata&&u.user_metadata.terminos)||''}}
 function guardarSes(r){const s={access_token:r.access_token,refresh_token:r.refresh_token,expires_at:r.expires_at||Math.floor(Date.now()/1000)+(+r.expires_in||3600),user:userInfo(r.user)};nube.ses=s;try{localStorage.setItem(SES_KEY,JSON.stringify(s))}catch(e){}return s}
 function actualizarUsuario(u){if(!nube.ses||!u||!u.id)return;nube.ses.user=userInfo(u);try{localStorage.setItem(SES_KEY,JSON.stringify(nube.ses))}catch(e){}}
-function borrarSes(){nube.ses=null;try{localStorage.removeItem(SES_KEY)}catch(e){}}
+function borrarSes(){try{if(nube.ses)localStorage.removeItem('cuadre-cache:'+nube.ses.user.id);localStorage.removeItem(SES_KEY)}catch(e){}nube.ses=null;nube.filas=null}
 const volverA=()=>encodeURIComponent(location.origin+location.pathname);
 async function sfetch(path,opt,ms){
   opt=opt||{};let r;
@@ -643,6 +643,7 @@ async function sfetch(path,opt,ms){
   catch(e){throw e&&e.code==='timeout'?e:{code:'sin_conexion'}}
   let body=null;const t=await r.text();try{body=t?JSON.parse(t):null}catch(e){body=t}
   if(!r.ok){const m=body&&(body.msg||body.message||body.error_description||body.error)||'';throw{code:'http_'+r.status,status:r.status,msg:String(m),ecode:String(body&&(body.error_code||body.code)||''),body}}
+  if(opt.conTotal){const cr=r.headers.get('content-range')||'';const n=+cr.split('/')[1];return{body,total:isFinite(n)?n:null}}
   return body;
 }
 let refrescando=null;
@@ -659,11 +660,11 @@ async function api(path,opt){
   catch(e){if(e.status===401){sesionVencida();throw{code:'sin_sesion'}}throw e}
 }
 const nubeRpc=(fn,args)=>api('/rest/v1/rpc/'+fn,{method:'POST',body:JSON.stringify(args||{})});
-const nubePut=(col,id,data)=>api('/rest/v1/docs?on_conflict=user_id,col,id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:nube.ses.user.id,col,id:String(id),data:clean(data),actualizado:new Date().toISOString()})});
-const nubeDel=(col,id)=>api('/rest/v1/docs?col=eq.'+encodeURIComponent(col)+'&id=eq.'+encodeURIComponent(id),{method:'DELETE',headers:{Prefer:'return=minimal'}});
+const nubePut=(col,id,data)=>api('/rest/v1/docs?on_conflict=user_id,col,id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:nube.ses.user.id,col,id:String(id),data:clean(data),actualizado:new Date().toISOString()})}).then(r=>{if(nube.filas){nube.filas[col+'|'+id]=clean(data);guardarCache()}return r});
+const nubeDel=(col,id)=>api('/rest/v1/docs?col=eq.'+encodeURIComponent(col)+'&id=eq.'+encodeURIComponent(id),{method:'DELETE',headers:{Prefer:'return=minimal'}}).then(r=>{if(nube.filas){delete nube.filas[col+'|'+id];guardarCache()}return r});
 function sesionVencida(){if(mode!=='nube')return;borrarSes();resetDatos();mode='login';irPaso('entrar');login.err='Tu sesión se cerró. Vuelve a entrar.';closeSheetSafe();render()}
 function closeSheetSafe(){try{if(SH)closeSheet()}catch(e){}}
-function resetDatos(){metodos=[];movs=[];deudas=[];cfg={};nube.cargado=false;nube.admin=false;nube.usuarios=null;plan.info=null;plan.pagos=null;plan.pendientes=null;plan.motivo='';nube.dispositivos=null}
+function resetDatos(){if(typeof adm!=='undefined')Object.assign(adm,{lista:null,off:0,fin:false,resumen:null,equipo:null,devs:null,devOff:0,nombres:{},yo:null});nube.filas=null;nube.syncAt='';metodos=[];movs=[];deudas=[];cfg={};nube.cargado=false;nube.admin=false;nube.usuarios=null;plan.info=null;plan.pagos=null;plan.pendientes=null;plan.motivo='';nube.dispositivos=null}
 function devId(){try{let d=localStorage.getItem('cuadre-dev');if(!d||d.length<16){const a=new Uint8Array(12);crypto.getRandomValues(a);d=[...a].map(x=>x.toString(16).padStart(2,'0')).join('');localStorage.setItem('cuadre-dev',d)}return d}catch(e){return null}}
 function modeloAndroid(){const m=/Android [\d.]+; ([^;)]+?)(?: Build|\))/.exec(navigator.userAgent||'');return m&&m[1]&&m[1]!=='K'?m[1].trim():''}
 function marcarVisita(){const disp=dispositivo(),dev=devId();return(dev?nubeRpc('marcar_visita',{disp,dev}):Promise.reject()).catch(()=>nubeRpc('marcar_visita',{disp}))}
@@ -685,26 +686,63 @@ async function initNube(){
   if(tipo==='signup'||tipo==='email_change')setTimeout(()=>toast('¡Listo! Tu correo quedó verificado'),400);
   await cargarNube(true);
 }
+/* Sincronización eficiente:
+   - Se guarda una copia local (por usuario) para abrir al instante.
+   - Al actualizar solo se piden los cambios nuevos, por páginas de 1000.
+   - Un conteo rápido detecta si algo se borró en otro dispositivo. */
+const PAG=1000;
+const cacheKey=()=>'cuadre-cache:'+nube.ses.user.id;
+let _cacheT=null;
+function guardarCache(){clearTimeout(_cacheT);_cacheT=setTimeout(()=>{try{if(nube.ses&&nube.filas)localStorage.setItem(cacheKey(),JSON.stringify({v:1,filas:nube.filas,syncAt:nube.syncAt||''}))}catch(e){}},300)}
+function leerCache(){try{const c=JSON.parse(localStorage.getItem(cacheKey())||'null');return c&&c.v===1&&c.filas?c:null}catch(e){return null}}
+function aplicarFilas(){
+  const M=[],V=[],D=[];let C={};
+  Object.entries(nube.filas||{}).forEach(([k,data])=>{const i=k.indexOf('|'),col=k.slice(0,i),id=k.slice(i+1);const o={...(data||{}),id};if(col==='metodos')M.push(o);else if(col==='movs')V.push(normMov(o));else if(col==='deudas')D.push(o);else if(col==='cfg'&&id==='cfg')C=data||{}});
+  metodos=M;movs=V;deudas=D;cfg=C;sortM();
+}
+async function traerFilas(filtro){
+  const out=[];
+  for(let off=0;off<200000;off+=PAG){
+    const p=await api('/rest/v1/docs?select=col,id,data,actualizado'+(filtro||'')+'&order=actualizado.asc,col.asc,id.asc&limit='+PAG+'&offset='+off);
+    (p||[]).forEach(r=>out.push(r));
+    if(!p||p.length<PAG)break;
+  }
+  return out;
+}
+const maxAct=(a,b)=>!a?b:!b?a:(new Date(a)>new Date(b)?a:b);
 async function cargarNube(primera){
   try{
-    const rows=await api('/rest/v1/docs?select=col,id,data&limit=10000');
-    const M=[],V=[],D=[];let C={};
-    (rows||[]).forEach(r=>{const o={...(r.data||{}),id:r.id};if(r.col==='metodos')M.push(o);else if(r.col==='movs')V.push(normMov(o));else if(r.col==='deudas')D.push(o);else if(r.col==='cfg'&&r.id==='cfg')C=r.data||{}});
-    metodos=M;movs=V;deudas=D;cfg=C;sortM();
+    let completa=false;
+    if(primera&&!nube.filas){const c=leerCache();if(c){nube.filas=c.filas;nube.syncAt=c.syncAt;aplicarFilas();nube.cargado=true;render()}}
+    if(!nube.filas||!nube.syncAt){
+      const rows=await traerFilas('');completa=true;
+      nube.filas={};nube.syncAt='';rows.forEach(r=>{nube.filas[r.col+'|'+r.id]=r.data||{};nube.syncAt=maxAct(nube.syncAt,r.actualizado)});
+    }else{
+      const desde=new Date(new Date(nube.syncAt).getTime()-120000).toISOString();
+      const rows=await traerFilas('&actualizado=gt.'+encodeURIComponent(desde));
+      rows.forEach(r=>{nube.filas[r.col+'|'+r.id]=r.data||{};nube.syncAt=maxAct(nube.syncAt,r.actualizado)});
+      // ¿Se borró algo en otro dispositivo? Si el total no coincide, se recarga todo
+      const cnt=await api('/rest/v1/docs?select=id&limit=1',{headers:{Prefer:'count=exact'},conTotal:true});
+      if(cnt&&cnt.total!=null&&cnt.total!==Object.keys(nube.filas).length){
+        const all=await traerFilas('');nube.filas={};nube.syncAt='';all.forEach(r=>{nube.filas[r.col+'|'+r.id]=r.data||{};nube.syncAt=maxAct(nube.syncAt,r.actualizado)});completa=true;
+      }
+    }
+    aplicarFilas();
     if(!reg.correo&&nube.ses)reg.correo=nube.ses.user.email;
-    if(primera&&!(rows||[]).length)await subirDatosLocales();
+    if(primera&&completa&&!Object.keys(nube.filas).length)await subirDatosLocales();
+    guardarCache();
     nube.cargado=true;nube.sync=Date.now();
     if(bannerMsg)bannerMsg='';
-    render();
+    if(!SH)render();
     if(primera){
       api('/auth/v1/user').then(u=>{actualizarUsuario(u);render()}).catch(()=>{});
       cargarPlan();
       const pf=cfg.perfil||{};
-      marcarVisita().then(a=>{nube.admin=a===true;if(pf.nombre)nubeRpc('guardar_perfil',{p_nombre:pf.nombre,p_apellido:pf.apellido||'',p_nacimiento:pf.nacimiento||null}).catch(()=>{});if(nube.admin&&view==='perfil'){cargarUsuarios();cargarPendientes()}render()}).catch(()=>{});
+      marcarVisita().then(a=>{nube.admin=a===true;if(pf.nombre)nubeRpc('guardar_perfil',{p_nombre:pf.nombre,p_apellido:pf.apellido||'',p_nacimiento:pf.nacimiento||null}).catch(()=>{});if(nube.admin&&view==='admin')cargarAdmin();render()}).catch(()=>{});
     }
   }catch(e){
     if(e.code==='sin_sesion')return;
-    bannerMsg=nube.cargado?'No se pudieron actualizar tus datos ('+(e.code||'error')+'). Revisa tu conexión.':'No se pudo conectar con tu cuenta ('+(e.code||'error')+'). Revisa tu internet y vuelve a abrir la app.';
+    bannerMsg=nube.cargado?'Sin conexión: ves tus datos guardados en este dispositivo ('+(e.code||'error')+').':'No se pudo conectar con tu cuenta ('+(e.code||'error')+'). Revisa tu internet y vuelve a abrir la app.';
     render();
   }
 }
@@ -719,7 +757,7 @@ async function subirDatosLocales(){
   if(Object.keys(c).length)filas.push({user_id:uid,col:'cfg',id:'cfg',data:c,actualizado:now});
   if(!filas.length)return;
   await api('/rest/v1/docs?on_conflict=user_id,col,id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(filas)});
-  metodos=(Array.isArray(d.metodos)?d.metodos:[]).slice();movs=(Array.isArray(d.movs)?d.movs:[]).map(normMov);deudas=(Array.isArray(d.deudas)?d.deudas:[]).slice();cfg=c;sortM();
+  filas.forEach(f=>{nube.filas[f.col+'|'+f.id]=f.data});aplicarFilas();
   try{localStorage.setItem(LS+':subido',JSON.stringify(d));localStorage.removeItem(LS)}catch(e){}
   setTimeout(()=>toast('Pasamos a tu cuenta los datos que tenías en este dispositivo'),300);
 }
@@ -869,40 +907,9 @@ async function verifDesdePerfil(){
   catch(e){toast(authErr(e,'enviar el correo'))}
 }
 
-/* Panel de administrador */
-async function cargarUsuarios(){
-  nube.usuariosErr='';
-  try{nube.usuarios=await api('/rest/v1/perfiles?select=*&order=creado.desc&limit=1000');api('/rest/v1/dispositivos?select=user_id,nombre,ip,primero,ultimo,visitas&order=ultimo.desc&limit=500').then(d=>{nube.dispositivos=d;render()}).catch(()=>{nube.dispositivos=[]})}
-  catch(e){nube.usuariosErr='No se pudo cargar la lista ('+(e.code||'error')+').'}
-  render();
-}
+/* Fechas legibles */
 function fechaHora(iso){if(!iso)return '';const d=new Date(iso);if(isNaN(d))return '';return d.toLocaleDateString('es-VE',{day:'numeric',month:'short',year:'numeric'})+', '+d.toLocaleTimeString('es-VE',{hour:'numeric',minute:'2-digit'})}
 function haceCuanto(iso){if(!iso)return 'Nunca';const s=(Date.now()-new Date(iso))/1000;if(s<120)return 'Ahora';if(s<3600)return 'Hace '+Math.floor(s/60)+' min';if(s<86400)return 'Hace '+Math.floor(s/3600)+' h';const d=Math.floor(s/86400);return d===1?'Ayer':'Hace '+d+' días'}
-function dispositivosCard(){
-  if(!(mode==='nube'&&nube.admin))return '';
-  const d=nube.dispositivos,u=nube.usuarios||[];
-  let o='<div class="card"><div class="card-h"><div><h2>Dispositivos conectados</h2><p class="sub">Desde dónde se usa Cuadre. Solo nombre, dispositivo, IP y última conexión; se borran tras 90 días sin uso.</p></div></div>';
-  if(!d)return o+'<p class="muted" style="margin:0">Cargando…</p></div>';
-  if(!d.length)return o+'<p class="muted" style="margin:0">Todavía no hay dispositivos registrados. Aparecen cuando cada persona vuelve a abrir la app.</p></div>';
-  const nom={};u.forEach(x=>{nom[x.id]=[x.nombre,x.apellido].filter(Boolean).join(' ')||'Sin perfil aún'});
-  const ico=n=>/iPhone|iPad|Android/.test(n)?'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>':'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="2"/><path d="M2 19h20"/></svg>';
-  const personas=new Set(d.map(x=>x.user_id)).size,hoy=d.filter(x=>Date.now()-new Date(x.ultimo)<864e5).length;
-  o+='<div class="adm-kpis"><div><b>'+d.length+'</b><small>Dispositivos</small></div><div><b>'+personas+'</b><small>Personas</small></div><div><b>'+hoy+'</b><small>Activos hoy</small></div><div><b>'+d.filter(x=>/iPhone|iPad|Android/.test(x.nombre||'')).length+'</b><small>Celulares</small></div></div>';
-  return o+'<div class="adm-list">'+d.map(x=>'<div class="adm-row"><div class="avatar sm dev-ico" aria-hidden="true">'+ico(x.nombre||'')+'</div><div class="adm-main"><b>'+esc(nom[x.user_id]||'Usuario')+'</b><span>'+esc(x.nombre||'Dispositivo')+'</span><small>IP '+esc(x.ip||'no disponible')+' · desde '+esc(fechaHora(x.primero))+'</small></div><div class="adm-last"><b>'+esc(haceCuanto(x.ultimo))+'</b><small>'+(x.visitas||0)+' '+(x.visitas===1?'visita':'visitas')+'</small></div></div>').join('')+'</div></div>';
-}
-function adminCard(){
-  if(!(mode==='nube'&&nube.admin))return '';
-  const u=nube.usuarios;
-  let o='<div class="card"><div class="card-h"><div><h2>Panel de administrador</h2><p class="sub">Personas registradas en Cuadre. Solo tú ves esta sección; sus gastos y datos siguen siendo privados.</p></div><button class="btn sm" type="button" id="admRec">Actualizar</button></div>';
-  if(nube.usuariosErr)return o+'<p class="err" style="margin:0">'+esc(nube.usuariosErr)+'</p></div>';
-  if(!u)return o+'<p class="muted" style="margin:0">Cargando…</p></div>';
-  const ahora=Date.now(),d7=u.filter(x=>x.ultima_vez&&ahora-new Date(x.ultima_vez)<7*864e5).length,mes=today().slice(0,7),nuevos=u.filter(x=>(x.creado||'').slice(0,7)===mes).length;
-  const tieneVer=u.some(x=>'verificado' in x),ver=u.filter(x=>x.verificado).length;
-  o+='<div class="adm-kpis"><div><b>'+u.length+'</b><small>Registrados</small></div>'+(tieneVer?'<div><b>'+ver+'</b><small>Verificados</small></div>':'')+'<div><b>'+d7+'</b><small>Activos en 7 días</small></div><div><b>'+nuevos+'</b><small>Nuevos este mes</small></div></div>';
-  o+='<div class="adm-list">'+u.map(x=>{const n=[x.nombre,x.apellido].filter(Boolean).join(' ');return '<div class="adm-row"><div class="avatar sm">'+iniciales(n||x.email||'?')+'</div><div class="adm-main"><b>'+esc(n||'Sin perfil aún')+(tieneVer?' '+(x.verificado?'<span class="vbadge sm" title="Verificado">'+icoVerif+'</span>':'<span class="vbadge no sm"><span>Sin verificar</span></span>'):'')+'</b><span>'+esc(x.email||'')+'</span><small>Registro: '+esc(fechaHora(x.creado))+(x.dispositivo?' · '+esc(x.dispositivo):'')+' · '+esc(planTxt(x))+'</small></div><div class="adm-last"><b>'+esc(haceCuanto(x.ultima_vez))+'</b><small>'+(x.visitas||0)+' '+(x.visitas===1?'visita':'visitas')+'</small></div></div>'}).join('')+'</div></div>';
-  return o;
-}
-
 /* Eventos de entrada y cuenta */
 const LOGIN_CAMPOS={lCorreo:'correo',lClave:'clave',lClave2:'clave2',lCodigo:'codigo'};
 document.addEventListener('input',e=>{const k=LOGIN_CAMPOS[e.target.id];if(k)login[k]=e.target.value;else if(e.target.id==='cClave')cuentaClave.clave=e.target.value;else if(e.target.id==='cClave2')cuentaClave.clave2=e.target.value});
@@ -915,7 +922,7 @@ document.addEventListener('click',e=>{
   else if(t.id==='lReVerif'||t.id==='lReVerif2')reenviarVerif();
   else if(t.dataset.ver){const i=$('#'+t.dataset.ver);if(i){const v=i.type==='password';i.type=v?'text':'password';t.textContent=v?'Ocultar':'Ver';t.setAttribute('aria-label',v?'Ocultar contraseña':'Mostrar contraseña')}}
   else if(t.id==='salir')cerrarSesion();
-  else if(t.id==='admRec'){nube.usuarios=null;nube.dispositivos=null;plan.pendientes=null;render();cargarUsuarios();cargarPendientes()}
+  else if(t.id==='admRec'){recargarAdmin()}
   else if(t.id==='cAbrir'){cuentaClave.abierta=true;cuentaClave.err='';render();const f=$('#cClave');if(f)f.focus()}
   else if(t.id==='cCancel'){Object.assign(cuentaClave,{abierta:false,clave:'',clave2:'',err:''});render()}
   else if(t.id==='cSave')guardarClaveCuenta();
@@ -1139,7 +1146,7 @@ function adminPagosCard(){
 async function revisarPago(id,ok,btn){
   if(!ok&&btn.dataset.armed!=='1'){btn.dataset.armed='1';btn.textContent='¿Rechazar?';setTimeout(()=>{if(btn.isConnected){btn.dataset.armed='';btn.textContent='Rechazar'}},3000);return}
   btn.disabled=true;
-  try{await nubeRpc('revisar_pago',{p_id:+id,p_aprobar:ok,p_nota:ok?null:'No encontramos el pago. Revisa la referencia y repórtalo de nuevo.'});toast(ok?'Pago aprobado: esa cuenta ya es Premium':'Pago rechazado');plan.pendientes=null;render();cargarPendientes();if(nube.usuarios)cargarUsuarios()}
+  try{await nubeRpc('revisar_pago',{p_id:+id,p_aprobar:ok,p_nota:ok?null:'No encontramos el pago. Revisa la referencia y repórtalo de nuevo.'});toast(ok?'Pago aprobado: esa cuenta ya es Premium':'Pago rechazado');plan.pendientes=null;render();cargarPendientes();if(typeof recargarAdmin==='function')recargarAdmin(true)}
   catch(e){btn.disabled=false;toast('No se pudo ('+(e.code||'error')+')')}
 }
 const cob={abierto:false,v:{},enviando:false,err:''};
@@ -1209,12 +1216,61 @@ document.addEventListener('click',e=>{
   else if(t.id==='cobGuardar')guardarCobro();
   else if(t.dataset.copiar){const v=(plan.cobro||{})[t.dataset.copiar]||'';try{navigator.clipboard.writeText(v).then(()=>toast('Copiado'),()=>toast('No se pudo copiar'))}catch(x){toast('No se pudo copiar')}}
 });
-/* ---------- Ventana Administrador (solo cuentas administradoras) ---------- */
+/* ---------- Ventana Administrador (solo cuentas administradoras) ----------
+   Pensada para miles de usuarios: el resumen lo calcula el servidor y las listas
+   se piden por páginas de 50, con búsqueda y filtros hechos en la base de datos. */
 let admTab='personas',admFiltro='todos',admBuscar='';
 const equipo={correo:'',enviando:false,err:''};
+const ADM_PAG=50;
+const adm={lista:null,off:0,fin:false,cargando:false,err:'',resumen:null,equipo:null,devs:null,devOff:0,devFin:false,devCargando:false,nombres:{},yo:null};
 const esAdminNube=()=>mode==='nube'&&nube.admin;
-const yo=()=>(nube.usuarios||[]).find(x=>nube.ses&&x.id===nube.ses.user.id)||{};
-function cargarAdmin(){if(!esAdminNube())return;if(!nube.usuarios)cargarUsuarios();if(!plan.pendientes)cargarPendientes()}
+const PERF_COLS='id,email,nombre,apellido,creado,ultima_vez,visitas,es_admin,es_dueno,verificado,premium_hasta';
+const yo=()=>adm.yo||{};
+function cargarAdmin(){if(!esAdminNube())return;if(!adm.resumen)cargarResumen();if(!adm.lista&&admTab==='personas')cargarPersonas(true);if(!adm.yo)cargarYo();if(!plan.pendientes)cargarPendientes();if(admTab==='equipo'&&!adm.equipo)cargarEquipo();if(admTab==='dispositivos'&&!adm.devs)cargarDevs(true)}
+function recargarAdmin(silencio){adm.resumen=null;adm.lista=null;adm.equipo=null;adm.devs=null;adm.nombres={};plan.pendientes=null;if(!silencio)render();cargarAdmin()}
+async function cargarYo(){try{const r=await api('/rest/v1/perfiles?select='+PERF_COLS+'&id=eq.'+nube.ses.user.id);adm.yo=(r&&r[0])||{};render()}catch(e){}}
+async function cargarResumen(){
+  try{adm.resumen=await nubeRpc('admin_resumen',{})}
+  catch(e){adm.resumen={sinFuncion:true}}
+  render();
+}
+function filtrosPersonas(){
+  const ahora=new Date().toISOString(),c=[];
+  const q=admBuscar.trim().replace(/[,()*%\\:"']/g,' ').trim();
+  if(q)c.push('or(email.ilike.*'+q+'*,nombre.ilike.*'+q+'*,apellido.ilike.*'+q+'*)');
+  if(admFiltro==='mem')c.push('or(premium_hasta.gt.'+ahora+',es_admin.is.true)');
+  if(admFiltro==='gratis')c.push('es_admin.is.false','or(premium_hasta.is.null,premium_hasta.lte.'+ahora+')');
+  return c.length?'&and='+encodeURIComponent('('+c.join(',')+')'):'';
+}
+async function cargarPersonas(reset){
+  if(adm.cargando)return;
+  if(reset){adm.lista=null;adm.off=0;adm.fin=false}
+  adm.cargando=true;adm.err='';
+  const pedido=++cargarPersonas.n;
+  try{
+    const r=await api('/rest/v1/perfiles?select='+PERF_COLS+filtrosPersonas()+'&order=creado.desc&limit='+ADM_PAG+'&offset='+adm.off);
+    if(pedido!==cargarPersonas.n)return;
+    adm.lista=(reset||!adm.lista?[]:adm.lista).concat(r||[]);adm.off+=(r||[]).length;adm.fin=(r||[]).length<ADM_PAG;
+  }catch(e){if(e.code!=='sin_sesion')adm.err='No se pudo cargar la lista ('+(e.code||'error')+').'}
+  adm.cargando=false;render();
+}
+cargarPersonas.n=0;
+async function cargarEquipo(){try{adm.equipo=await api('/rest/v1/perfiles?select='+PERF_COLS+'&es_admin=is.true&order=creado.asc&limit=100')}catch(e){adm.equipo=[]}render()}
+async function cargarNombres(ids){
+  const faltan=[...new Set(ids)].filter(id=>!adm.nombres[id]);if(!faltan.length)return;
+  try{const r=await api('/rest/v1/perfiles?select='+PERF_COLS+'&id=in.('+faltan.join(',')+')');(r||[]).forEach(x=>{adm.nombres[x.id]=x})}catch(e){}
+}
+async function cargarDevs(reset){
+  if(adm.devCargando)return;
+  if(reset){adm.devs=null;adm.devOff=0;adm.devFin=false}
+  adm.devCargando=true;
+  try{
+    const r=await api('/rest/v1/dispositivos?select=user_id,nombre,ip,primero,ultimo,visitas&order=ultimo.desc&limit='+ADM_PAG+'&offset='+adm.devOff);
+    await cargarNombres((r||[]).map(d=>d.user_id));
+    adm.devs=(reset||!adm.devs?[]:adm.devs).concat(r||[]);adm.devOff+=(r||[]).length;adm.devFin=(r||[]).length<ADM_PAG;
+  }catch(e){adm.devs=adm.devs||[]}
+  adm.devCargando=false;render();
+}
 function planBadge(x){
   if(x.es_admin)return{k:'admin',t:'ADMIN',s:x.es_dueno?'Dueño':'Administrador'};
   if(x.premium_hasta&&new Date(x.premium_hasta)>Date.now())return{k:'mem',t:'MEMBRESÍA',s:'Hasta '+fechaCorta(x.premium_hasta)};
@@ -1228,35 +1284,50 @@ function accesoAdminCard(){
 }
 function vAdmin(){
   if(!esAdminNube())return header('Administrador','')+'<div class="card"><p style="margin:0">Esta sección es solo para administradores.</p></div>';
-  const pend=(plan.pendientes||[]).length;
+  const pend=(adm.resumen&&adm.resumen.pendientes!=null)?adm.resumen.pendientes:(plan.pendientes||[]).length;
   const T=(k,l,n)=>'<button type="button" data-admtab="'+k+'" aria-pressed="'+(admTab===k)+'">'+l+(n?' <span class="num">'+n+'</span>':'')+'</button>';
   let o=header('Administrador','Solo lo ven los administradores de Cuadre','<button class="btn" type="button" id="admRec">Actualizar</button>');
   o+='<div class="seg adm-tabs" role="group" aria-label="Secciones">'+T('personas','Personas')+T('pagos','Pagos',pend)+T('dispositivos','Dispositivos')+T('cobro','Cobro')+T('equipo','Equipo')+'</div>';
   if(admTab==='personas')o+=personasCard();
   else if(admTab==='pagos')o+=adminPagosCard();
-  else if(admTab==='dispositivos')o+=dispositivosCard();
+  else if(admTab==='dispositivos')o+=devsCard();
   else if(admTab==='cobro')o+=adminCobroCard();
   else o+=equipoCard();
   return o;
 }
+function filaPersona(x){
+  const n=[x.nombre,x.apellido].filter(Boolean).join(' '),p=planBadge(x);
+  return '<div class="adm-row"><div class="avatar sm">'+iniciales(n||x.email||'?')+'</div><div class="adm-main"><b>'+esc(n||'Sin perfil aún')+' <span class="pbadge '+p.k+'">'+p.t+'</span>'+(x.verificado?' <span class="vbadge sm" title="Verificado">'+icoVerif+'</span>':'')+'</b><span>'+esc(x.email||'')+'</span><small>'+(p.s?esc(p.s)+' · ':'')+'Registro: '+esc(fechaCorta(x.creado))+'</small></div><div class="adm-last"><b>'+esc(haceCuanto(x.ultima_vez))+'</b><small>'+(x.visitas||0)+' '+(x.visitas===1?'visita':'visitas')+'</small></div></div>';
+}
 function personasCard(){
-  const u=nube.usuarios;
-  if(nube.usuariosErr)return '<div class="card"><p class="err" style="margin:0">'+esc(nube.usuariosErr)+'</p></div>';
-  if(!u)return '<div class="card"><p class="muted" style="margin:0">Cargando…</p></div>';
-  const mem=u.filter(x=>planBadge(x).k==='mem').length,gr=u.filter(x=>planBadge(x).k==='gratis').length,d7=u.filter(x=>x.ultima_vez&&Date.now()-new Date(x.ultima_vez)<7*864e5).length;
-  const q=admBuscar.trim().toLowerCase();
-  const lista=u.filter(x=>{const k=planBadge(x).k;if(admFiltro==='mem'&&k==='gratis')return false;if(admFiltro==='gratis'&&k!=='gratis')return false;return !q||([x.nombre,x.apellido,x.email].join(' ').toLowerCase().includes(q))});
+  const r=adm.resumen,u=adm.lista;
+  let o='';
+  if(r&&!r.sinFuncion)o+='<div class="adm-kpis"><div><b>'+r.total+'</b><small>Registrados</small></div><div><b>'+r.membresia+'</b><small>Con membresía</small></div><div><b>'+r.gratis+'</b><small>Gratis'+(r.prueba?' · '+r.prueba+' en prueba':'')+'</small></div><div><b>'+r.activos7+'</b><small>Activos en 7 días</small></div></div>';
+  else if(r&&r.sinFuncion)o+='<p class="hint" style="margin:0">Para ver el resumen con totales, activa el texto de “escalabilidad” en Supabase.</p>';
   const F=(k,l)=>'<button type="button" class="chip-f" data-admf="'+k+'" aria-pressed="'+(admFiltro===k)+'">'+l+'</button>';
-  let o='<div class="adm-kpis"><div><b>'+u.length+'</b><small>Registrados</small></div><div><b>'+mem+'</b><small>Con membresía</small></div><div><b>'+gr+'</b><small>Gratis</small></div><div><b>'+d7+'</b><small>Activos en 7 días</small></div></div>';
   o+='<div class="card"><div class="card-h"><div><h2>Personas</h2><p class="sub">Quién usa la app y su plan. Sus gastos y datos siguen siendo privados.</p></div></div>'+
     '<div class="adm-tools"><input class="input" id="admBuscar" type="search" placeholder="Buscar nombre o correo" value="'+esc(admBuscar)+'"><div class="chips-f">'+F('todos','Todos')+F('mem','Membresía')+F('gratis','Gratis')+'</div></div>';
-  if(!lista.length)return o+'<p class="muted" style="margin:14px 0 0">No hay personas que coincidan.</p></div>';
-  return o+'<div class="adm-list">'+lista.map(x=>{const n=[x.nombre,x.apellido].filter(Boolean).join(' '),p=planBadge(x);
-    return '<div class="adm-row"><div class="avatar sm">'+iniciales(n||x.email||'?')+'</div><div class="adm-main"><b>'+esc(n||'Sin perfil aún')+' <span class="pbadge '+p.k+'">'+p.t+'</span>'+(x.verificado?' <span class="vbadge sm" title="Verificado">'+icoVerif+'</span>':'')+'</b><span>'+esc(x.email||'')+'</span><small>'+(p.s?esc(p.s)+' · ':'')+'Registro: '+esc(fechaCorta(x.creado))+'</small></div><div class="adm-last"><b>'+esc(haceCuanto(x.ultima_vez))+'</b><small>'+(x.visitas||0)+' '+(x.visitas===1?'visita':'visitas')+'</small></div></div>'}).join('')+'</div></div>';
+  if(adm.err)return o+'<p class="err" style="margin:10px 0 0">'+esc(adm.err)+'</p></div>';
+  if(!u)return o+'<p class="muted" style="margin:14px 0 0">Cargando…</p></div>';
+  if(!u.length)return o+'<p class="muted" style="margin:14px 0 0">No hay personas que coincidan.</p></div>';
+  o+='<div class="adm-list">'+u.map(filaPersona).join('')+'</div>';
+  if(!adm.fin)o+='<button class="btn soft block" type="button" id="admMas"'+(adm.cargando?' disabled':'')+'>'+(adm.cargando?'Cargando…':'Cargar más personas')+'</button>';
+  return o+'</div>';
+}
+const icoDev=n=>/iPhone|iPad|Android/.test(n)?'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>':'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="2"/><path d="M2 19h20"/></svg>';
+function devsCard(){
+  const d=adm.devs,r=adm.resumen;
+  let o='<div class="card"><div class="card-h"><div><h2>Dispositivos conectados</h2><p class="sub">Nombre, dispositivo, IP y última conexión'+(r&&r.dispositivos!=null?' · '+r.dispositivos+' en total':'')+'. Se borran tras 90 días sin uso.</p></div></div>';
+  if(!d)return o+'<p class="muted" style="margin:0">Cargando…</p></div>';
+  if(!d.length)return o+'<p class="muted" style="margin:0">Todavía no hay dispositivos registrados.</p></div>';
+  o+='<div class="adm-list">'+d.map(x=>{const u=adm.nombres[x.user_id]||{},n=[u.nombre,u.apellido].filter(Boolean).join(' ')||u.email||'Usuario',p=u.id?planBadge(u):null;
+    return '<div class="adm-row"><div class="avatar sm dev-ico" aria-hidden="true">'+icoDev(x.nombre||'')+'</div><div class="adm-main"><b>'+esc(n)+(p?' <span class="pbadge '+p.k+'">'+p.t+'</span>':'')+'</b><span>'+esc(x.nombre||'Dispositivo')+'</span><small>IP '+esc(x.ip||'no disponible')+' · desde '+esc(fechaHora(x.primero))+'</small></div><div class="adm-last"><b>'+esc(haceCuanto(x.ultimo))+'</b><small>'+(x.visitas||0)+' '+(x.visitas===1?'visita':'visitas')+'</small></div></div>'}).join('')+'</div>';
+  if(!adm.devFin)o+='<button class="btn soft block" type="button" id="devMas"'+(adm.devCargando?' disabled':'')+'>'+(adm.devCargando?'Cargando…':'Cargar más dispositivos')+'</button>';
+  return o+'</div>';
 }
 function equipoCard(){
-  const u=nube.usuarios;if(!u)return '<div class="card"><p class="muted" style="margin:0">Cargando…</p></div>';
-  const admins=u.filter(x=>x.es_admin),soyDueno=!!yo().es_dueno;
+  const admins=adm.equipo;if(!admins)return '<div class="card"><p class="muted" style="margin:0">Cargando…</p></div>';
+  const soyDueno=!!yo().es_dueno;
   let o='<div class="card"><div class="card-h"><div><h2>Equipo administrador</h2><p class="sub">Estas personas pueden abrir la ventana Administrador: ven las personas registradas, sus dispositivos, los pagos y los precios. Nunca ven los gastos ni el dinero de nadie.</p></div></div><div class="adm-list">'+
     admins.map(x=>{const n=[x.nombre,x.apellido].filter(Boolean).join(' ');return '<div class="adm-row"><div class="avatar sm">'+iniciales(n||x.email)+'</div><div class="adm-main"><b>'+esc(n||'Sin perfil aún')+' <span class="pbadge admin">'+(x.es_dueno?'DUEÑO':'ADMIN')+'</span></b><span>'+esc(x.email||'')+'</span></div>'+(soyDueno&&!x.es_dueno?'<button class="btn sm danger" type="button" data-quitaradm="'+esc(x.email)+'">Quitar</button>':'')+'</div>'}).join('')+'</div></div>';
   if(!soyDueno)return o+'<p class="hint" style="margin:0">Solo el dueño de Cuadre puede agregar o quitar administradores.</p>';
@@ -1270,15 +1341,21 @@ async function ponerAdmin(correo,si,btn){
   if(si&&!correoOk(correo)){equipo.err='Escribe un correo válido.';render();return}
   if(!si&&btn&&btn.dataset.armed!=='1'){btn.dataset.armed='1';btn.textContent='¿Quitar?';setTimeout(()=>{if(btn.isConnected){btn.dataset.armed='';btn.textContent='Quitar'}},3000);return}
   equipo.err='';equipo.enviando=true;render();
-  try{await nubeRpc('poner_admin',{p_email:correo,p_admin:si});if(si)equipo.correo='';toast(si?'Listo: '+correo+' ya es administrador':'Quitaste a '+correo+' como administrador');nube.usuarios=null;await cargarUsuarios()}
-  catch(e){const m=(e&&e.msg)||'';equipo.err=/no_encontrado/.test(m)?'No hay ninguna cuenta con ese correo. Pídele que primero cree su cuenta en Cuadre.':/solo_dueno/.test(m)?'Solo el dueño puede cambiar administradores.':/function|poner_admin/.test(m)||e.status===404?'Falta activar esta función en Supabase (te paso el texto para pegar).':'No se pudo guardar ('+(e.code||'error')+').';if(!si)toast(equipo.err)}
+  try{await nubeRpc('poner_admin',{p_email:correo,p_admin:si});if(si)equipo.correo='';toast(si?'Listo: '+correo+' ya es administrador':'Quitaste a '+correo+' como administrador');adm.equipo=null;adm.lista=null;await cargarEquipo();cargarPersonas(true)}
+  catch(e){const m=(e&&e.msg)||'';equipo.err=/no_encontrado/.test(m)?'No hay ninguna cuenta con ese correo. Pídele que primero cree su cuenta en Cuadre.':/solo_dueno/.test(m)?'Solo el dueño puede cambiar administradores.':/function|poner_admin/.test(m)||e.status===404?'Falta activar esta función en Supabase.':'No se pudo guardar ('+(e.code||'error')+').';if(!si)toast(equipo.err)}
   equipo.enviando=false;render();
 }
-document.addEventListener('input',e=>{if(e.target.id==='admBuscar'){admBuscar=e.target.value;render();const i=$('#admBuscar');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}else if(e.target.id==='eqCorreo')equipo.correo=e.target.value});
+let _busT=null;
+document.addEventListener('input',e=>{
+  if(e.target.id==='admBuscar'){admBuscar=e.target.value;clearTimeout(_busT);_busT=setTimeout(()=>{cargarPersonas(true).then(()=>{const i=$('#admBuscar');if(i&&document.activeElement!==i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}})},300)}
+  else if(e.target.id==='eqCorreo')equipo.correo=e.target.value;
+});
 document.addEventListener('click',e=>{
-  const t=e.target.closest&&e.target.closest('[data-admtab],[data-admf],#eqGo,[data-quitaradm]');if(!t)return;
-  if(t.dataset.admtab){admTab=t.dataset.admtab;render();window.scrollTo(0,0)}
-  else if(t.dataset.admf){admFiltro=t.dataset.admf;render()}
+  const t=e.target.closest&&e.target.closest('[data-admtab],[data-admf],#eqGo,[data-quitaradm],#admMas,#devMas');if(!t)return;
+  if(t.dataset.admtab){admTab=t.dataset.admtab;render();cargarAdmin();window.scrollTo(0,0)}
+  else if(t.dataset.admf){admFiltro=t.dataset.admf;render();cargarPersonas(true)}
+  else if(t.id==='admMas')cargarPersonas(false);
+  else if(t.id==='devMas')cargarDevs(false);
   else if(t.id==='eqGo')ponerAdmin(equipo.correo,true);
   else if(t.dataset.quitaradm)ponerAdmin(t.dataset.quitaradm,false,t);
 });
@@ -1464,7 +1541,9 @@ function render(){
   if(!tienePerfil()){document.body.classList.add('onb');$('#view').innerHTML=banner+vRegistro();const[k0,t0]=statusNow();setStatus(k0,t0);return}
   document.body.classList.remove('onb');
   const body=({inicio:vInicio,movs:vMovs,metodos:vMetodos,deudas:vDeudas,perfil:vPerfil,premium:vPremium,admin:vAdmin}[view]||vInicio)();
+  const _fa=document.activeElement,_fid=_fa&&_fa.id==='admBuscar'?_fa.id:null;
   $('#view').innerHTML=banner+(view==='inicio'?avisoPlan():'')+body;
+  if(_fid){const i=document.getElementById(_fid);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
   const[k,t]=statusNow();setStatus(k,t);
 }
 function header(title,sub,right){return '<div class="top"><div><h1>'+title+'</h1>'+(sub?'<p class="sub">'+sub+'</p>':'')+'<div class="mstatus"><span class="dot" id="mdot"></span><span id="mstatusTxt"></span></div></div><div class="toolbar">'+(right||'')+'</div></div>'}
