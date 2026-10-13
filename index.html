@@ -1073,7 +1073,7 @@ function vPremium(){
   o+='<div class="card"><div class="card-h"><h2>Qué incluye</h2></div><div class="tabla-wrap"><table class="plan-tabla"><thead><tr><th>Función</th><th>Gratis</th><th>Premium</th></tr></thead><tbody>'+
     fila('Registrar gastos e ingresos','Sin límite','Sin límite')+fila('Métodos de pago','Hasta '+LIM.metodos,'Ilimitados')+fila('Deudas activas','Hasta '+LIM.deudas,'Ilimitadas')+
     fila('Gráficas e historial','Últimos '+LIM.meses+' meses','Completo')+fila('Categorías propias','No','Sí')+
-    fila('Asistente financiero','No','Sí <small>(próximamente)</small>')+fila('Recordatorios de cuotas','No','Sí <small>(próximamente)</small>')+fila('Exportar a Excel o PDF','No','Sí <small>(próximamente)</small>')+
+    fila('Asistente que detecta gastos que puedes reducir','No','Sí')+fila('Recordatorios de cuotas','No','Sí <small>(próximamente)</small>')+fila('Exportar a Excel o PDF','No','Sí <small>(próximamente)</small>')+
     '</tbody></table></div><p class="hint" style="margin:10px 0 0">Si tu Premium vence, nunca pierdes tus datos: los sigues viendo y puedes seguir registrando gastos.</p></div>';
   const per=(k,tit,precio,cada,extra)=>'<button type="button" class="precio-op" data-per="'+k+'" aria-pressed="'+(rep.periodo===k)+'"><span class="po-top"><span class="po-radio" aria-hidden="true"></span>'+tit+(extra?'<em>'+extra+'</em>':'')+'</span><b>'+usd(precio)+'</b><span class="po-cada">'+cada+'</span></button>';
   const ahorro=pm*12-pa;
