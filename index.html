@@ -33,7 +33,7 @@
   --accent:#7B3FE4; --accent-ink:#FFFFFF; --accent-soft:#EEE7FC; --accent-2:#A78BFA;
   --pos:#1E8A4C; --pos-soft:#E6F4EA; --neg:#C2362F; --neg-soft:#FCE9E8; --warn:#9A5B00; --warn-soft:#FDF1DD;
   --t-efectivo:#16A34A; --t-debito:#2563EB; --t-credito:#7C3AED; --t-cripto:#EA580C; --t-banco:#0D9488; --t-digital:#DB2777; --t-otro:#64748B;
-  --cat1:#2a78d6; --cat2:#eb6834; --cat3:#1baf7a; --cat4:#eda100; --cat5:#e87ba4; --cat6:#008300; --cat7:#6250d6; --cat8:#e34948; --cat-x:#9a98a6;
+  --cat1:#2a78d6; --cat2:#eb6834; --cat3:#1baf7a; --cat4:#eda100; --cat5:#e87ba4; --cat6:#008300; --cat7:#6250d6; --cat8:#e34948;--cat9:#9a6b3f; --cat-x:#9a98a6;
   --c-in:#7B3FE4; --c-out:#eb6834;
   --shadow:0 1px 2px rgba(22,21,29,.04),0 6px 20px rgba(22,21,29,.05);
   --font:'Plus Jakarta Sans',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
@@ -44,7 +44,7 @@
   --accent:#9B6BFF; --accent-ink:#FFFFFF; --accent-soft:#2C2342; --accent-2:#7C5BD6;
   --pos:#5DD08F; --pos-soft:#17301F; --neg:#FF7A70; --neg-soft:#3A1D1C; --warn:#F2B04C; --warn-soft:#3A2C14;
   --t-efectivo:#4ADE80; --t-debito:#60A5FA; --t-credito:#A78BFA; --t-cripto:#FB923C; --t-banco:#2DD4BF; --t-digital:#F472B6; --t-otro:#94A3B8;
-  --cat1:#3987e5; --cat2:#d95926; --cat3:#199e70; --cat4:#c98500; --cat5:#d55181; --cat6:#008300; --cat7:#9085e9; --cat8:#e66767; --cat-x:#6f6d7c;
+  --cat1:#3987e5; --cat2:#d95926; --cat3:#199e70; --cat4:#c98500; --cat5:#d55181; --cat6:#008300; --cat7:#9085e9; --cat8:#e66767;--cat9:#c08a5a; --cat-x:#6f6d7c;
   --c-in:#9B6BFF; --c-out:#d95926;
   --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark}}
 :root[data-theme="dark"]{
@@ -52,7 +52,7 @@
   --accent:#9B6BFF; --accent-ink:#FFFFFF; --accent-soft:#2C2342; --accent-2:#7C5BD6;
   --pos:#5DD08F; --pos-soft:#17301F; --neg:#FF7A70; --neg-soft:#3A1D1C; --warn:#F2B04C; --warn-soft:#3A2C14;
   --t-efectivo:#4ADE80; --t-debito:#60A5FA; --t-credito:#A78BFA; --t-cripto:#FB923C; --t-banco:#2DD4BF; --t-digital:#F472B6; --t-otro:#94A3B8;
-  --cat1:#3987e5; --cat2:#d95926; --cat3:#199e70; --cat4:#c98500; --cat5:#d55181; --cat6:#008300; --cat7:#9085e9; --cat8:#e66767; --cat-x:#6f6d7c;
+  --cat1:#3987e5; --cat2:#d95926; --cat3:#199e70; --cat4:#c98500; --cat5:#d55181; --cat6:#008300; --cat7:#9085e9; --cat8:#e66767;--cat9:#c08a5a; --cat-x:#6f6d7c;
   --c-in:#9B6BFF; --c-out:#d95926;
   --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark}
 
@@ -553,7 +553,7 @@ const normMov=v=>(v.tipo==='gasto'&&CAT_MAP[v.categoria])?{...v,categoria:CAT_MA
 const misCats=t=>((cfg.cats||{})[t]||[]).filter(Boolean);
 const catsOf=t=>{const base=CATS[t].filter(c=>c!=='Otros');return [...base,...misCats(t).filter(c=>!base.includes(c)&&c!=='Otros'),'Otros']};
 const CATS={
-  gasto:['Víveres','Gastos fijos','Gastos personales','Transporte','Salud','Ocio','Educación','Deudas','Otros'],
+  gasto:['Víveres','Gastos fijos','Gastos personales','Transporte','Salud','Mascotas','Ocio','Educación','Deudas','Otros'],
   ingreso:['Salario','Ventas','Freelance','Cobros','Regalos','Otros']
 };
 
@@ -1296,8 +1296,8 @@ const ASIS_GRUPOS=[
   {k:'taxi',n:'Taxis y viajes en app',c:'Cuando puedas, combina con transporte público.',p:['taxi','uber','ridery','yummy rides','mototaxi','moto taxi','cabify','indrive']},
 ];
 // Categorías y palabras que indican un gasto necesario
-const ASIS_NECESARIO_CAT=['Víveres','Gastos fijos','Salud','Educación','Deudas'];
-const ASIS_NECESARIO_P=['mercado','supermercado','viveres','farmacia','medicina','medico','consulta','alquiler','renta','luz','corpoelec','agua','hidro','internet','cantv','gas','condominio','colegio','matricula','universidad','gasolina','cuota','prestamo','seguro'];
+const ASIS_NECESARIO_CAT=['Víveres','Gastos fijos','Salud','Mascotas','Educación','Deudas'];
+const ASIS_NECESARIO_P=['mercado','supermercado','viveres','farmacia','medicina','medico','consulta','alquiler','renta','luz','corpoelec','agua','hidro','internet','cantv','gas','condominio','colegio','matricula','universidad','gasolina','cuota','prestamo','seguro','veterinario','veterinaria','perrarina','gatarina','vacuna'];
 const asis={abierto:false};
 const _rx={};
 function tiene(txt,p){if(p.length>4)return txt.includes(p);const r=_rx[p]||(_rx[p]=new RegExp('(^|[^a-z0-9ñ])'+p.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'s?([^a-z0-9ñ]|$)'));return r.test(txt)}
@@ -1355,7 +1355,7 @@ function analizarGastos(){
   sem.filter(v=>!asisGrupo(v)).forEach(v=>{const c=v.categoria||'Otros';catSem[c]=(catSem[c]||0)+(asisUSD(v)||0)});
   prev.filter(v=>!asisGrupo(v)).forEach(v=>{const c=v.categoria||'Otros';catPrev[c]=(catPrev[c]||0)+(asisUSD(v)||0)});
   Object.entries(catSem).forEach(([c,t])=>{
-    if(['Deudas','Salud','Gastos fijos','Educación','Víveres'].includes(c))return;
+    if(['Deudas','Salud','Gastos fijos','Educación','Víveres','Mascotas'].includes(c))return;
     const normal=(catPrev[c]||0)/4;
     if(normal>1&&t>normal*1.5&&t-normal>5)out.push({key:'c:'+c,tipo:'subio',titulo:c+' subió esta semana',detalle:'Gastaste '+money(t,'USD')+'; una semana normal es ~'+money(normal,'USD')+' (+'+Math.round((t/normal-1)*100)+'%)',consejo:'Revisa qué fue distinto esta semana.',semana:t-normal,mensual:(t-normal)*4.3});
   });
@@ -1979,7 +1979,7 @@ function movForm(v,preset,resume){
         if(d&&isCred(d))b+='<p class="hint" style="margin:0">Esto registra un pago a tu tarjeta de crédito y reduce lo que debes.</p>';
       }else{
         b+='<div class="field"><span class="lbl">Categoría <small>(opcional)</small></span><div class="chips">'+catsOf(st.tipo).filter(c=>!(st.tipo==='gasto'&&c==='Deudas'&&st.categoria!=='Deudas')).map(c=>'<button type="button" class="chip" data-cat="'+esc(c)+'" aria-pressed="'+(st.categoria===c)+'">'+esc(c)+'</button>').join('')+(st.nuevaCat==null?'<button type="button" class="chip add" data-newcat="1">+ Nueva categoría</button>':'')+'</div>'+
-          (st.nuevaCat!=null?'<div class="newcat"><input class="input" id="vNuevaCat" maxlength="25" autocomplete="off" placeholder="Ej. Mascotas, Seguro, Peluquería" value="'+esc(st.nuevaCat)+'"><button type="button" class="btn sm primary" data-savecat="1">Agregar</button><button type="button" class="btn sm" data-cancelcat="1">Cancelar</button></div>':'')+'</div>';
+          (st.nuevaCat!=null?'<div class="newcat"><input class="input" id="vNuevaCat" maxlength="25" autocomplete="off" placeholder="Ej. Seguro, Peluquería" value="'+esc(st.nuevaCat)+'"><button type="button" class="btn sm primary" data-savecat="1">Agregar</button><button type="button" class="btn sm" data-cancelcat="1">Cancelar</button></div>':'')+'</div>';
       }
       b+='<div class="two"><div class="field"><label class="lbl" for="vFecha">Fecha</label><input class="input" id="vFecha" type="date" value="'+esc(st.fecha)+'"></div><div class="field"><label class="lbl" for="vNota">Nota <small>(opcional)</small></label><input class="input" id="vNota" maxlength="60" autocomplete="off" placeholder="'+(st.tipo==='gasto'?'Ej. supermercado':st.tipo==='ingreso'?'Ej. sueldo':'Ej. retiro de efectivo')+'" value="'+esc(st.nota)+'"></div></div>';
       frame(isNew?'Nuevo movimiento':'Editar movimiento',b,footer(isNew?'Guardar':'Guardar cambios',!isNew));
@@ -2035,7 +2035,7 @@ function movForm(v,preset,resume){
 const monthShort=k=>cap(new Intl.DateTimeFormat('es',{month:'short'}).format(pdate(k+'-01')).replace('.',''));
 const CAT_ORDEN=['Víveres','Gastos fijos','Gastos personales','Transporte','Salud','Ocio','Educación'];
 // El color sigue a la categoría: 7 fijas + la 1.ª propia; el resto va en gris
-const catCol=c=>{const i=CAT_ORDEN.indexOf(c);if(i>=0)return 'var(--cat'+(i+1)+')';if(c==='Deudas')return 'var(--cat8)';return 'var(--cat-x)'};
+const catCol=c=>{const i=CAT_ORDEN.indexOf(c);if(i>=0)return 'var(--cat'+(i+1)+')';if(c==='Deudas')return 'var(--cat8)';if(c==='Mascotas')return 'var(--cat9)';return 'var(--cat-x)'};
 function debtMovIds(){const s=new Set();deudas.forEach(d=>(d.abonos||[]).forEach(a=>{if(a.mov)s.add(a.mov)}));return s}
 const chartCur=()=>(tasa()||!metodos.some(m=>m.moneda==='VES'))?'USD':'VES';
 function convC(v,c){const cur=chartCur();if(cur==='USD')return toUSD(v,c);return c==='VES'?v:null}
