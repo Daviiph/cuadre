@@ -498,6 +498,11 @@ textarea.input{resize:vertical;min-height:70px;font:inherit}
 .foto-btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .foto-cam{position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;background:var(--surface);color:var(--accent);border:2px solid var(--accent);display:grid;place-items:center}
 .foto-wrap .link{font-size:.78rem;color:var(--muted)}
+.cat-list{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 2px}
+.tag.catx .cat-nm{border:0;background:none;padding:0;font:inherit;color:var(--ink);font-weight:600;cursor:pointer;text-decoration:underline dotted transparent}
+.cat-nm:hover{text-decoration-color:currentColor}
+.cat-ed{display:flex;gap:6px;width:100%;align-items:center}.cat-ed .input{flex:1;min-width:0}
+
 /* Sello Premium */
 :root{--oro:#B8912F;--oro-2:#E7CB7A;--oro-ink:#2A2140}
 .prem-sello{display:inline-flex;align-items:center;gap:6px;padding:4px 11px 4px 9px;border-radius:999px;background:linear-gradient(135deg,#2B2142,#151022);color:var(--oro-2);border:1px solid rgba(231,203,122,.5);font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;line-height:1;vertical-align:middle;box-shadow:0 1px 6px rgba(43,33,66,.18);white-space:nowrap}
@@ -1662,7 +1667,76 @@ async function guardarAjustes(cambios){
   finally{if(_ajPend&&Object.keys(cambios).every(k=>_ajPend[k]===cambios[k]))_ajPend=null}
 }
 const icoEngrane='<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
+
+/* ---------- Mis categorías (se guardan en la cuenta) ---------- */
+const normCat=n=>String(n||'').trim().replace(/\s+/g,' ').slice(0,25);
+function agregarCat(t,n){return patchCfg(c=>{const l=((c.cats||{})[t]||[]).filter(Boolean);if(!l.some(x=>x.toLowerCase()===n.toLowerCase()))l.push(n);return{...c,cats:{...(c.cats||{}),[t]:l}}})}
+function quitarCat(t,n){return patchCfg(c=>({...c,cats:{...(c.cats||{}),[t]:((c.cats||{})[t]||[]).filter(x=>x&&x!==n)}}))}
+async function renombrarCat(t,viejo,nuevo){
+  await patchCfg(c=>({...c,cats:{...(c.cats||{}),[t]:((c.cats||{})[t]||[]).filter(Boolean).map(x=>x===viejo?nuevo:x).filter((x,i,a)=>a.findIndex(y=>y.toLowerCase()===x.toLowerCase())===i)}}));
+  for(const v of movs.filter(v=>v.tipo===t&&v.categoria===viejo))await put('movs',{...v,categoria:nuevo});
+}
+// Recupera categorías propias que ya usan tus movimientos pero se perdieron de la lista (una sola vez)
+let _catsRev=false;
+function recuperarCats(){
+  if(_catsRev||!ready()||!tienePerfil()||(cfg||{}).catsRev)return;_catsRev=true;
+  const falta={gasto:[],ingreso:[]};
+  movs.forEach(v=>{const t=v.tipo,c=v.categoria;if(!c||!falta[t]||CAT_MAP[c]||c==='Deudas'||c==='Cobros')return;if(!CATS[t].includes(c)&&!misCats(t).includes(c)&&!falta[t].includes(c))falta[t].push(c)});
+  setTimeout(()=>patchCfg(c=>{const cats={...(c.cats||{})};for(const t of ['gasto','ingreso']){const l=(cats[t]||[]).filter(Boolean);falta[t].forEach(x=>{if(!l.includes(x))l.push(x)});cats[t]=l}return{...c,cats,catsRev:1}}).catch(()=>{_catsRev=false}),0);
+}
+const catAj={tipo:'gasto',nueva:'',edit:null,editVal:'',err:''};
+function catsAjHtml(){
+  const t=catAj.tipo,l=misCats(t),prem=esPremium();
+  const tab=(v,lab)=>'<button type="button" class="aj-op" data-cattab="'+v+'" aria-pressed="'+(t===v)+'"><span>'+lab+'</span></button>';
+  let h='<div class="field" id="ajCats"><span class="lbl">Mis categorías</span><span class="hint">Crea tus propias categorías. Toca una para cambiarle el nombre.</span><div class="aj-grid">'+tab('gasto','Gastos')+tab('ingreso','Ingresos')+'</div>';
+  h+='<div class="cat-list">'+(l.length?l.map(c=>catAj.edit===c?
+      '<div class="cat-ed"><input class="input" id="ajCatEdit" maxlength="25" autocomplete="off" value="'+esc(catAj.editVal)+'"><button type="button" class="btn sm primary" data-catok="1">Guardar</button><button type="button" class="btn sm" data-catno="1">Cancelar</button></div>':
+      '<span class="tag catx"><i style="background:'+(t==='gasto'?catCol(c):'var(--c-in)')+'"></i><button type="button" class="cat-nm" data-catedit="'+esc(c)+'" title="Cambiar nombre">'+esc(c)+'</button><button type="button" data-catdel="'+esc(c)+'" aria-label="Quitar '+esc(c)+'">×</button></span>').join('')
+    :'<p class="muted" style="margin:0">Aún no tienes categorías propias de '+(t==='gasto'?'gastos':'ingresos')+'.</p>')+'</div>';
+  h+='<div class="newcat"><input class="input" id="ajCatNueva" maxlength="25" autocomplete="off" placeholder="'+(t==='gasto'?'Ej. Seguro, Peluquería':'Ej. Alquiler, Comisiones')+'" value="'+esc(catAj.nueva)+'"><button type="button" class="btn sm primary" data-catadd="1">Agregar</button></div>';
+  if(!prem)h+='<span class="hint">Crear categorías propias es parte de Premium.</span>';
+  if(catAj.err)h+='<span class="err-txt">'+esc(catAj.err)+'</span>';
+  return h+'</div>';
+}
+function catsAjClick(el,sh){
+  const b=el.closest&&el.closest('[data-cattab],[data-catadd],[data-catedit],[data-catok],[data-catno],[data-catdel]');if(!b)return false;
+  const t=catAj.tipo;catAj.err='';
+  const redraw=()=>{sh.draw();const f=document.getElementById('ajCats');if(f)f.scrollIntoView({block:'nearest'})};
+  if(b.dataset.cattab){catAj.tipo=b.dataset.cattab;catAj.edit=null;redraw();return true}
+  if(b.dataset.catno){catAj.edit=null;redraw();return true}
+  if(b.dataset.catedit){catAj.edit=b.dataset.catedit;catAj.editVal=b.dataset.catedit;redraw();const i=document.getElementById('ajCatEdit');if(i){i.focus();i.select()}return true}
+  const choca=(n,salvo)=>catsOf(t).some(x=>x!==salvo&&x.toLowerCase()===n.toLowerCase());
+  if(b.dataset.catadd){
+    if(!esPremium()){closeSheet();plan.motivo='cats';irPremium();return true}
+    const n=normCat(catAj.nueva);
+    if(!n){catAj.err='Escribe el nombre de la categoría.';redraw();return true}
+    if(choca(n)){catAj.err='Ya tienes una categoría llamada “'+n+'”.';redraw();return true}
+    if(!ready()){catAj.err='Todavía estamos cargando tus datos. Intenta en unos segundos.';redraw();return true}
+    b.disabled=true;b.textContent='Guardando…';
+    agregarCat(t,n).then(()=>{catAj.nueva='';redraw();toast('Categoría “'+n+'” creada')}).catch(e=>{catAj.err=errText(e);redraw()});
+    return true;
+  }
+  if(b.dataset.catok){
+    const viejo=catAj.edit,n=normCat(catAj.editVal);
+    if(!n){catAj.err='Escribe el nombre de la categoría.';redraw();return true}
+    if(n===viejo){catAj.edit=null;redraw();return true}
+    if(choca(n,viejo)){catAj.err='Ya tienes una categoría llamada “'+n+'”.';redraw();return true}
+    b.disabled=true;b.textContent='Guardando…';
+    renombrarCat(t,viejo,n).then(()=>{catAj.edit=null;redraw();toast('Categoría renombrada a “'+n+'”')}).catch(e=>{catAj.err=errText(e);redraw()});
+    return true;
+  }
+  if(b.dataset.catdel){
+    const c=b.dataset.catdel;
+    if(b.dataset.armed!=='1'){b.dataset.armed='1';b.textContent='¿Quitar?';setTimeout(()=>{if(b.isConnected){b.dataset.armed='';b.textContent='×'}},3000);return true}
+    quitarCat(t,c).then(()=>{redraw();toast('Categoría “'+c+'” quitada')}).catch(e=>{catAj.err=errText(e);redraw()});
+    return true;
+  }
+  return false;
+}
+function catsAjInput(el){if(el.id==='ajCatNueva'){catAj.nueva=el.value;return true}if(el.id==='ajCatEdit'){catAj.editVal=el.value;return true}return false}
+document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const id=e.target&&e.target.id;if(id==='ajCatNueva'||id==='ajCatEdit'){e.preventDefault();e.stopPropagation();const b=document.querySelector(id==='ajCatNueva'?'[data-catadd]':'[data-catok]');if(b)b.click()}},true);
 function ajustesForm(){
+  catAj.edit=null;catAj.err='';catAj.nueva='';
   const opc=(k,v,l,ico)=>'<button type="button" class="aj-op" data-aj="'+k+'" data-v="'+v+'" aria-pressed="'+(String(ajustes()[k])===String(v))+'">'+(ico||'')+'<span>'+l+'</span></button>';
   const sol='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
   const luna='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
@@ -1679,15 +1753,18 @@ function ajustesForm(){
           (soporte?'<label class="check" style="margin-top:6px"><input type="checkbox" id="ajNotif"'+(s.notificar&&Notification.permission==='granted'?' checked':'')+'><span>Recibir notificaciones en este dispositivo'+(Notification.permission==='denied'?' <small class="err-txt">(bloqueadas: actívalas en los ajustes del navegador)</small>':'')+'</span></label>'
           :'<p class="hint" style="margin:6px 0 0">'+(esIOS()&&!enApp()?'En iPhone, para recibir notificaciones primero instala Cuadre en tu pantalla de inicio (Perfil → Instala Cuadre) y ábrela desde ahí.':'Este navegador no permite notificaciones. Igual verás los avisos en Inicio.')+'</p>')+
         '</div>'+
+        (tienePerfil()?catsAjHtml():'')+
         '<p class="hint" style="margin:0">Tus preferencias se guardan en tu cuenta y se aplican en todos tus dispositivos.</p>',
         '<div class="r"><button class="btn primary" type="button" data-close>Listo</button></div>');
     },
     click(el){
+      if(catsAjClick(el,this))return;
       const b=el.closest&&el.closest('[data-aj]');if(!b)return;
       const k=b.dataset.aj,v=k==='avisoDias'?+b.dataset.v:b.dataset.v;
       guardarAjustes({[k]:v}).catch(e=>toast(errText(e)));this.draw();render();
     },
     input(el){
+      if(catsAjInput(el))return;
       if(el.id!=='ajNotif')return;
       if(el.checked){
         Notification.requestPermission().then(p=>{
@@ -1726,7 +1803,7 @@ try{_obs.observe(document.body,{childList:true,subtree:true,characterData:true})
 /* ---------- Diccionario inglés ---------- */
 I18N.dic={
 // Navegación y generales
-'Inicio':'Home','Miembro Premium':'Premium member','Membresía activa':'Active membership','Bienvenido a Cuadre Premium':'Welcome to Cuadre Premium','Gracias por apoyar a Cuadre. Ya tienes todas las funciones, sin límites.':'Thanks for supporting Cuadre. You now have every feature, with no limits.','Movimientos':'Transactions','Métodos de pago':'Payment methods','Métodos':'Methods','Deudas':'Debts','Perfil':'Profile','Administrador':'Admin','Configuración':'Settings',
+'Inicio':'Home','Miembro Premium':'Premium member','Mis categorías':'My categories','Crea tus propias categorías. Toca una para cambiarle el nombre.':'Create your own categories. Tap one to rename it.','Gastos':'Expenses','Ingresos':'Income','Agregar':'Add','Ej. Seguro, Peluquería':'e.g. Insurance, Haircut','Ej. Alquiler, Comisiones':'e.g. Rent, Commissions','Aún no tienes categorías propias de gastos.':'You have no custom expense categories yet.','Aún no tienes categorías propias de ingresos.':'You have no custom income categories yet.','Cambiar nombre':'Rename','Escribe el nombre de la categoría.':'Type the category name.','Membresía activa':'Active membership','Bienvenido a Cuadre Premium':'Welcome to Cuadre Premium','Gracias por apoyar a Cuadre. Ya tienes todas las funciones, sin límites.':'Thanks for supporting Cuadre. You now have every feature, with no limits.','Movimientos':'Transactions','Métodos de pago':'Payment methods','Métodos':'Methods','Deudas':'Debts','Perfil':'Profile','Administrador':'Admin','Configuración':'Settings',
 'Registrar gasto':'Add expense','Registrar movimiento':'Add transaction','Guardado en tu cuenta':'Saved to your account','Guardado en este dispositivo':'Saved on this device','Guardado en tu cuenta de Claude':'Saved to your Claude account',
 'Cargando…':'Loading…','Cargando tus datos…':'Loading your data…','Un momento.':'One moment.','Cancelar':'Cancel','Guardar':'Save','Editar':'Edit','Eliminar':'Delete','Cerrar':'Close','Listo':'Done','Quitar':'Remove','Copiar':'Copy','Copiado':'Copied','Actualizar':'Refresh','Ver todos':'See all','Volver':'Back','← Volver':'← Back','Menú':'Menu','Nuevo':'New','Todos':'All','Resumen':'Summary','Falta':'Missing','Desde':'From','Hacia':'To','Fecha':'Date','Nota':'Note','Monto':'Amount','Moneda':'Currency','Categoría':'Category','Descripción':'Description','Estado':'Status','Mañana':'Tomorrow','Hoy':'Today','Ayer':'Yesterday','Ahora':'Now','Nunca':'Never','Vencido':'Overdue','al mes':'per month','al año':'per year',
 // Inicio
@@ -1854,7 +1931,8 @@ function dbFail(e){
 function saveLocal(){localStorage.setItem(LS,JSON.stringify({metodos,movs,deudas,cfg}))}
 // Cambios a la configuración en fila: cada uno se aplica sobre la versión más reciente (así uno no borra al otro)
 let _colaCfg=Promise.resolve();
-function patchCfg(fn){const p=_colaCfg.then(async()=>{const obj=fn(clean(cfg||{}));await putCfg(obj);if(mode==='cuenta')cfg=clean(obj)});_colaCfg=p.catch(()=>{});return p}
+async function cfgFresca(){if(mode==='nube'&&nube.ses){try{const r=await api('/rest/v1/docs?select=data&col=eq.cfg&id=eq.cfg&user_id=eq.'+nube.ses.user.id);if(Array.isArray(r)&&r[0]&&r[0].data)return clean(r[0].data)}catch(e){}}return clean(cfg||{})}
+function patchCfg(fn){const p=_colaCfg.then(async()=>{const obj=fn(await cfgFresca());await putCfg(obj);if(mode==='cuenta')cfg=clean(obj)});_colaCfg=p.catch(()=>{});return p}
 async function putCfg(obj){
   if(mode==='cuenta')await timeout(base.set(clean(obj)),15000);
   else if(mode==='nube'){await nubePut('cfg','cfg',obj);const pa=cfg.perfil||{},pn=obj.perfil||{};cfg=clean(obj);render();if(pn.nombre&&(pn.nombre!==pa.nombre||pn.apellido!==pa.apellido||pn.nacimiento!==pa.nacimiento))nubeRpc('guardar_perfil',{p_nombre:pn.nombre||'',p_apellido:pn.apellido||'',p_nacimiento:pn.nacimiento||null}).catch(()=>{})}
@@ -1938,7 +2016,7 @@ document.addEventListener('change',e=>{if(e.target.id==='fotoIn'&&e.target.files
 let _ajKey='';
 function syncAjustes(){const k=JSON.stringify(ajustes());if(k!==_ajKey){_ajKey=k;aplicarTema();aplicarIdioma()}}
 function render(){
-  syncAjustes();
+  syncAjustes();recuperarCats();
   const navs=[['inicio','Inicio'],['movs','Movimientos'],['metodos','Métodos de pago'],['deudas','Deudas'],['perfil','Perfil']].concat(esAdminNube()?[['admin','Administrador']]:[]);
   $('#nav').innerHTML=navs.map(([k,l])=>'<button type="button" data-nav="'+k+'"'+(view===k?' aria-current="page"':'')+'>'+(k==='perfil'?svg('persona',1.8):svg(k,1.8))+'<span>'+l+'</span></button>').join('');
   const bb=(k,l)=>'<button type="button" data-nav="'+k+'"'+(view===k?' aria-current="page"':'')+'>'+svg(k,1.8)+'<span>'+l+'</span></button>';
@@ -2420,9 +2498,6 @@ function vPerfil(){
     row('Fecha de nacimiento',p.nacimiento?esc(longDate(p.nacimiento))+(e!=null?' · '+e+' años':''):'')+
     row('Correo electrónico',esc(p.correo||''))+row('Teléfono',esc(p.telefono||''))+row('País',esc(p.pais||''))+
     row('Usando Cuadre desde',desde?esc(longDate(desde)):'')+'</dl></div>';
-  const mc=[...misCats('gasto').map(c=>['gasto',c]),...misCats('ingreso').map(c=>['ingreso',c])];
-  o+='<div class="card"><div class="card-h"><div><h2>Mis categorías</h2><p class="sub">Las que creaste. Se agregan desde “+ Nueva categoría” al registrar un movimiento.</p></div></div>'+
-    (mc.length?'<div class="chips">'+mc.map(([t,c])=>'<span class="tag catx"><i style="background:'+(t==='gasto'?catCol(c):'var(--c-in)')+'"></i>'+esc(c)+' <small>'+(t==='gasto'?'gasto':'ingreso')+'</small><button type="button" data-delcat="'+t+'|'+esc(c)+'" aria-label="Quitar '+esc(c)+'">×</button></span>').join('')+'</div><p class="hint" style="margin:10px 0 0">Si quitas una, los movimientos que ya la usan la conservan.</p>':'<p class="muted" style="margin:0">Aún no has creado categorías propias.</p>')+'</div>';
   o+='<div class="card"><div class="card-h"><h2>Resumen</h2></div><dl class="kv">'+row('Métodos de pago',String(metodos.length))+row('Movimientos',String(movs.length))+row('Deudas activas',String(deudas.filter(d=>pendiente(d)>0.004).length))+'</dl></div>';
   o+=accesoAdminCard();
   o+=planCard()+instalarCard(true)+cuentaCards()+zonaDatosCard();
@@ -2491,8 +2566,8 @@ function movForm(v,preset,resume){
         if(ex){st.categoria=ex;st.nuevaCat=null;this.draw();return true}
         if(!ready()){showErr('Todavía estamos cargando tus datos. Intenta en unos segundos.');return true}
         el.disabled=true;el.textContent='Guardando…';
-        const t=st.tipo,cats={...(cfg.cats||{})};cats[t]=[...misCats(t),n];
-        putCfg({...cfg,cats}).then(()=>{st.categoria=n;st.nuevaCat=null;this.draw();toast('Categoría “'+n+'” creada')}).catch(e=>{this.draw();showErr(errText(e))});
+        const t=st.tipo;
+        agregarCat(t,n).then(()=>{st.categoria=n;st.nuevaCat=null;this.draw();toast('Categoría “'+n+'” creada')}).catch(e=>{this.draw();showErr(errText(e))});
         return true;
       }
       if(el.dataset.addmet){const key=el.dataset.addmet;const keep={...st};metodoForm(null,id=>{keep[key==='destino'?'destino':'metodo']=id;movForm(v,null,keep)});return true}
@@ -2717,7 +2792,7 @@ document.addEventListener('click',e=>{
   if(d.donut){donutModo=d.donut;try{localStorage.setItem(LS+':donut',donutModo)}catch(e){}render();return}
   if(d.delcat){const i=d.delcat.indexOf('|'),t=d.delcat.slice(0,i),c=d.delcat.slice(i+1);
     if(el.dataset.armed!=='1'){el.dataset.armed='1';el.textContent='¿Quitar?';setTimeout(()=>{if(el.isConnected){el.dataset.armed='';el.textContent='×'}},3000);return}
-    const cats={...(cfg.cats||{})};cats[t]=misCats(t).filter(x=>x!==c);putCfg({...cfg,cats}).then(()=>toast('Categoría “'+c+'” quitada')).catch(e=>toast(errText(e)));return}
+    quitarCat(t,c).then(()=>toast('Categoría “'+c+'” quitada')).catch(e=>toast(errText(e)));return}
   if(d.hist){if(histOpen.has(d.hist))histOpen.delete(d.hist);else histOpen.add(d.hist);render();return}
   if(d.editDeuda){const x=deudas.find(y=>y.id===d.editDeuda);if(x)deudaForm(x);return}
   if(d.abono){const x=deudas.find(y=>y.id===d.abono);if(x)abonoForm(x);return}
