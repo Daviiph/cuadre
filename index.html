@@ -491,6 +491,13 @@ textarea.input{resize:vertical;min-height:70px;font:inherit}
 .av-row.venc .av-main span{color:var(--neg);font-weight:700}.av-row.hoy .av-main span{color:var(--accent);font-weight:700}
 .note.vencida{color:var(--neg)!important;font-weight:700}.note.pronto{color:var(--accent)!important;font-weight:700}
 .notif-card .inst-tit{display:flex;gap:12px;align-items:flex-start}.notif-card .two{margin-top:12px}
+.avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+.avatar{overflow:visible;position:relative}
+.foto-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;flex:none}
+.foto-btn{border:0;cursor:pointer;padding:0}
+.foto-btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.foto-cam{position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;background:var(--surface);color:var(--accent);border:2px solid var(--accent);display:grid;place-items:center}
+.foto-wrap .link{font-size:.78rem;color:var(--muted)}
 </style>
 
 <div class="app">
@@ -1803,6 +1810,7 @@ I18N.reglas.push(
   [/^Hasta (\d+)$/,(s,n)=>'Up to '+n],[/^Últimos (\d+) meses$/,(s,n)=>'Last '+n+' months'],[/^Ahorras (.+)$/,(s,a)=>'Save '+a],[/^Monto a pagar:$/,()=>'Amount to pay:'],[/^Envía exactamente (.+)$/,(s,a)=>'Send exactly '+a],
   [/^Plan Gratis$/,()=>'Free plan']
 );
+Object.assign(I18N.dic,{'Cambiar foto de perfil':'Change profile photo','Cambiar foto':'Change photo','Quitar foto':'Remove photo','¿Quitar?':'Remove?','Foto de perfil actualizada':'Profile photo updated','Foto quitada':'Photo removed','Elige una imagen (JPG o PNG).':'Choose an image (JPG or PNG).'});
 function dbFail(e){
   const code=e&&e.code||'error';
   if(!ready()){bannerMsg='No se pudo conectar con tu cuenta ('+code+'). Cierra y vuelve a abrir la app.'}
@@ -1868,6 +1876,28 @@ let view='inicio',month=today().slice(0,7),fTipo='todos',fMet='';
 try{const v=localStorage.getItem(LS+':view');if(['inicio','movs','metodos','deudas','perfil'].includes(v))view=v}catch(e){}
 function go(v){if(v==='admin'){if(!esAdminNube())v='inicio';else setTimeout(cargarAdmin,0)}view=v;try{localStorage.setItem(LS+':view',v)}catch(e){}render();window.scrollTo(0,0)}
 
+
+/* ---------- Foto de perfil (para todos) ---------- */
+const icoCamara='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+function caraPerfil(){const f=perfil().foto;return f&&/^data:image\/(jpeg|png|webp);base64,/.test(f)?'<img src="'+f+'" alt="">':iniciales(nombreCompleto(perfil()))}
+function reducirFoto(file){return new Promise((ok,mal)=>{
+  if(!file||!/^image\//.test(file.type||'image/')){mal(new Error('tipo'));return}
+  const url=URL.createObjectURL(file),img=new Image();
+  img.onload=()=>{try{const S=320,l=Math.min(img.naturalWidth,img.naturalHeight),c=document.createElement('canvas');c.width=S;c.height=S;const x=c.getContext('2d');x.imageSmoothingQuality='high';
+    x.drawImage(img,(img.naturalWidth-l)/2,(img.naturalHeight-l)/2,l,l,0,0,S,S);URL.revokeObjectURL(url);ok(c.toDataURL('image/jpeg',0.82))}catch(e){mal(e)}};
+  img.onerror=()=>{URL.revokeObjectURL(url);mal(new Error('leer'))};img.src=url;
+})}
+async function ponerFoto(file){
+  try{const foto=await reducirFoto(file);await putCfg({...cfg,perfil:{...perfil(),foto}});toast('Foto de perfil actualizada')}
+  catch(e){toast(e&&e.message==='tipo'?'Elige una imagen (JPG o PNG).':e&&e.message==='leer'?'No se pudo abrir esa imagen. Prueba con otra (JPG o PNG).':errText(e))}
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest&&e.target.closest('#fotoCambiar,#fotoQuitar');if(!t)return;
+  if(t.id==='fotoCambiar'){const i=$('#fotoIn');if(i){i.value='';i.click()}}
+  else if(t.dataset.armed!=='1'){t.dataset.armed='1';t.textContent='¿Quitar?';setTimeout(()=>{if(t.isConnected){t.dataset.armed='';t.textContent='Quitar foto'}},3000)}
+  else{const p={...perfil()};delete p.foto;putCfg({...cfg,perfil:p}).then(()=>toast('Foto quitada')).catch(er=>toast(errText(er)))}
+});
+document.addEventListener('change',e=>{if(e.target.id==='fotoIn'&&e.target.files&&e.target.files[0])ponerFoto(e.target.files[0])});
 let _ajKey='';
 function syncAjustes(){const k=JSON.stringify(ajustes());if(k!==_ajKey){_ajKey=k;aplicarTema();aplicarIdioma()}}
 function render(){
@@ -1918,7 +1948,7 @@ function metCard(m){
 function vInicio(){
   const h=new Date().getHours();const hola=(h<12?'Buenos días':h<19?'Buenas tardes':'Buenas noches')+(primerNombre()?', '+esc(primerNombre()):'');
   const tasaBtn='<button class="btn" type="button" data-act="tasa">'+tasasTxt()+'</button>';
-  let o=header(hola,cap(new Intl.DateTimeFormat('es',{weekday:'long',day:'numeric',month:'long'}).format(new Date())),'<button type="button" class="avatar sm" data-nav="perfil" aria-label="Mi perfil" title="Mi perfil">'+iniciales(nombreCompleto(perfil()))+'</button>'+tasaBtn);
+  let o=header(hola,cap(new Intl.DateTimeFormat('es',{weekday:'long',day:'numeric',month:'long'}).format(new Date())),'<button type="button" class="avatar sm" data-nav="perfil" aria-label="Mi perfil" title="Mi perfil">'+caraPerfil()+'</button>'+tasaBtn);
   if(!metodos.length)return o+welcome();
   const disp=sumCur(metodos.filter(m=>!isCred(m)).map(m=>[m.moneda,saldo(m)]));
   const deuda=sumCur(metodos.filter(isCred).map(m=>[m.moneda,Math.max(0,saldo(m))]));
@@ -2315,7 +2345,7 @@ function validarPerfil(st){
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(c))return 'El correo no parece válido. Revisa que tenga @ y un dominio, por ejemplo nombre@gmail.com.';
   return null;
 }
-const perfilObj=st=>({nombre:limpio(st.nombre),apellido:limpio(st.apellido),nacimiento:st.nacimiento,correo:String(st.correo).trim().toLowerCase(),telefono:limpio(st.telefono),pais:limpio(st.pais),registrado:perfil().registrado||today()});
+const perfilObj=st=>({nombre:limpio(st.nombre),apellido:limpio(st.apellido),nacimiento:st.nacimiento,correo:String(st.correo).trim().toLowerCase(),telefono:limpio(st.telefono),pais:limpio(st.pais),registrado:perfil().registrado||today(),...(perfil().foto?{foto:perfil().foto}:{})});
 const campo=(id,lbl,val,extra)=>'<div class="field"><label class="lbl" for="'+id+'">'+lbl+'</label><input class="input" id="'+id+'" value="'+esc(val)+'" '+(extra||'')+'></div>';
 
 /* Registro (primera vez en esta cuenta) */
@@ -2344,7 +2374,7 @@ async function guardarRegistro(){
 function vPerfil(){
   const p=perfil(),x=partes(p),full=nombreCompleto(p);
   let o=header('Mi perfil','Tus datos personales','<button class="btn primary" type="button" data-act="perfil">Editar perfil</button>');
-  o+='<div class="card perfil"><div class="avatar">'+iniciales(full)+'</div><div style="min-width:0"><div class="nombre-v"><h2 style="font-size:1.4rem">'+esc(full)+'</h2>'+verifBadge()+'</div><p class="sub">'+esc(p.correo||'Sin correo')+'</p>'+(mode==='nube'?'':'<span class="st '+(enCuenta()?'ok':'neutral')+'" style="margin-top:8px">'+(mode==='cuenta'?'Guardado en tu cuenta de Claude':'Guardado solo en este dispositivo')+'</span>')+'</div></div>';
+  o+='<div class="card perfil"><div class="foto-wrap"><button type="button" class="avatar foto-btn" id="fotoCambiar" aria-label="Cambiar foto de perfil" title="Cambiar foto">'+caraPerfil()+'<span class="foto-cam" aria-hidden="true">'+icoCamara+'</span></button>'+(perfil().foto?'<button type="button" class="link sm" id="fotoQuitar">Quitar foto</button>':'')+'<input type="file" id="fotoIn" accept="image/*" hidden></div><div style="min-width:0"><div class="nombre-v"><h2 style="font-size:1.4rem">'+esc(full)+'</h2>'+verifBadge()+'</div><p class="sub">'+esc(p.correo||'Sin correo')+'</p>'+(mode==='nube'?'':'<span class="st '+(enCuenta()?'ok':'neutral')+'" style="margin-top:8px">'+(mode==='cuenta'?'Guardado en tu cuenta de Claude':'Guardado solo en este dispositivo')+'</span>')+'</div></div>';
   const e=edad(p.nacimiento);
   const desde=p.registrado||(()=>{const m=Math.min(...[...metodos,...movs,...deudas].map(z=>z.creado||Infinity));return Number.isFinite(m)?ymd(new Date(m)):''})();
   const row=(k,v)=>'<dt>'+k+'</dt><dd>'+(v||'<span class="muted">—</span>')+'</dd>';
