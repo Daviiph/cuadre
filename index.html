@@ -498,6 +498,27 @@ textarea.input{resize:vertical;min-height:70px;font:inherit}
 .foto-btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .foto-cam{position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;background:var(--surface);color:var(--accent);border:2px solid var(--accent);display:grid;place-items:center}
 .foto-wrap .link{font-size:.78rem;color:var(--muted)}
+/* Cuadre Rápido */
+body.modo-rapido .side,body.modo-rapido .bottombar,body.modo-rapido .mtop{display:none!important}
+body.modo-rapido .app{grid-template-columns:minmax(0,1fr)}
+.rap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:14px;padding-top:8px}
+.rap-top{display:flex;align-items:center;gap:10px}.rap-top b{display:block;font-size:1.05rem}.rap-top span{font-size:.82rem;color:var(--muted)}
+.brand-mark.sm{width:34px;height:34px}
+.rap-hero{background:var(--accent);color:var(--accent-ink);border-radius:var(--r);padding:22px 22px 20px;display:flex;flex-direction:column;gap:4px}
+.rap-hero .lbl{opacity:.85;font-size:.85rem;font-weight:600}.rap-big{font-size:2.4rem;font-weight:800;letter-spacing:-.02em;line-height:1.1}.rap-hero small{opacity:.85}
+.rap-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rap-tile{background:var(--surface);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:4px;border:1px solid var(--line)}
+.rap-tile span{font-size:.8rem;color:var(--muted);font-weight:600}.rap-tile b{font-size:1.3rem}
+.rap-tile.in b{color:var(--pos)}.rap-tile.out b{color:var(--neg)}
+.rap-net{margin:0;text-align:center;color:var(--muted);font-size:.9rem}.rap-net b{color:var(--ink)}
+.rap-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rap-btn{border:0;border-radius:var(--r);padding:18px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;font:inherit;font-weight:800;font-size:1.05rem;cursor:pointer}
+.rap-btn .i{width:26px;height:26px}
+.rap-btn.in{background:var(--accent-soft);color:var(--accent)}.rap-btn.out{background:var(--accent);color:var(--accent-ink)}
+.rap-full{align-self:center}
+.rap-pasos{margin:0 0 10px;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:.92rem}
+.rapido-card .two a.btn{text-decoration:none;display:inline-flex;justify-content:center;align-items:center}
+
 .modo-off{display:inline-flex;align-items:center;gap:5px;font-size:.68rem;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:4px 8px;border-radius:999px;white-space:nowrap;letter-spacing:.01em}
 .modo-off[hidden]{display:none}
 .modo-off i{width:6px;height:6px;border-radius:50%;background:var(--warn);flex:none}
@@ -1648,6 +1669,48 @@ document.addEventListener('click',e=>{
   if(t.id==='instOcultar'){inst.oculto=true;try{localStorage.setItem('cuadre-instalar-oculto','1')}catch(x){}render();toast('Puedes instalarla cuando quieras desde Perfil')}
   else if(t.id==='instGo'&&inst.evt){const ev=inst.evt;ev.prompt();ev.userChoice.finally(()=>{inst.evt=null;render()})}
 });
+
+/* ---------- Cuadre Rápido: resumen tipo widget para la pantalla de inicio ---------- */
+const URLQ=(()=>{try{return new URLSearchParams(location.search)}catch(e){return new URLSearchParams('')}})();
+const esRapido=/rapido\.html$/.test(location.pathname)||URLQ.has('rapido');
+let accionPend=['gasto','ingreso'].includes(URLQ.get('accion'))?URLQ.get('accion'):'';
+let rapidoOn=esRapido;
+function revisarAccion(){
+  if(!accionPend||!ready()||!tienePerfil()||(mode==='nube'&&!legalOk())||SH)return;
+  const t=accionPend;accionPend='';
+  try{history.replaceState(null,'',location.pathname+(esRapido&&!/rapido\.html$/.test(location.pathname)?'?rapido=1':''))}catch(e){}
+  setTimeout(()=>{if(!metodos.length){toast('Primero agrega un método de pago');return}movForm(null,{tipo:t})},50);
+}
+function vRapido(){
+  const k=today().slice(0,7),f=flujoMes(k),net=f.inc-f.exp;
+  const disp=sumCur(metodos.filter(m=>!isCred(m)).map(m=>[m.moneda,saldo(m)])),dd=dual(disp);
+  const rec=[...movs].sort(byDate).slice(0,3);
+  const fecha=cap(new Intl.DateTimeFormat('es',{weekday:'long',day:'numeric',month:'long'}).format(new Date()));
+  let o='<div class="rap">';
+  o+='<div class="rap-top"><div class="brand-mark sm" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5.5"/><path d="M8 9.75h8M8 14.25h8"/></svg></div><div><b>Cuadre Rápido</b><span>'+esc(fecha)+'</span></div></div>';
+  o+='<div class="rap-hero"><span class="lbl">Total restante</span><span class="rap-big">'+(disp.length?dd.main:money(0,'USD'))+'</span>'+(dd.sub?'<small>'+dd.sub+'</small>':'')+'</div>';
+  o+='<div class="rap-tiles"><div class="rap-tile in"><span>Ingresos del mes</span><b>'+fmtC(f.inc)+'</b></div><div class="rap-tile out"><span>Egresos del mes</span><b>'+fmtC(f.exp)+'</b></div></div>';
+  o+='<p class="rap-net">'+(f.inc||f.exp?(net>=0?'Este mes te quedan <b>'+fmtC(net)+'</b> de lo que ingresaste':'Este mes gastaste <b>'+fmtC(-net)+'</b> más de lo que ingresaste'):'Aún no hay ingresos ni gastos este mes')+'</p>';
+  o+='<div class="rap-btns"><button class="rap-btn in" type="button" data-act="nuevo-ingreso">'+svg('ingreso',2.4)+'<span>Ingreso</span></button><button class="rap-btn out" type="button" data-act="nuevo-gasto">'+svg('gasto',2.4)+'<span>Egreso</span></button></div>';
+  if(rec.length)o+='<div class="card rap-rec"><div class="card-h"><h2>Últimos movimientos</h2></div><div class="list">'+rec.map(movRow).join('')+'</div></div>';
+  o+='<button class="btn rap-full" type="button" id="rapSalir">Abrir Cuadre completo →</button></div>';
+  return o;
+}
+function rapidoCard(){
+  if(!tienePerfil())return '';
+  const web=mode==='nube',url=web?new URL('rapido.html',location.href).href:'';
+  return '<div class="card rapido-card"><div class="card-h"><div class="inst-tit"><span class="av-ico" aria-hidden="true">'+svg('plus',2.2)+'</span><div><h2>Cuadre Rápido</h2><p class="sub">Un acceso directo en tu pantalla de inicio: al tocarlo ves al instante ingresos, egresos y tu total restante, y registras con un toque. Sin entrar a toda la app.</p></div></div></div>'+
+    (web?'<ol class="rap-pasos"><li>Toca <b>Abrir Cuadre Rápido</b> (se abre en el navegador).</li><li><b>iPhone:</b> botón Compartir <span aria-hidden="true">⬆︎</span> → <b>Agregar a inicio</b>. <b>Android:</b> menú ⋮ → <b>Agregar a la pantalla principal</b>.</li><li>Te queda el ícono <b>Cuadre Rápido</b> al lado de Cuadre.</li></ol>'+
+      '<p class="hint" style="margin:0 0 10px">En Android también puedes mantener presionado el ícono de Cuadre para ver atajos: Registrar gasto, Registrar ingreso y Cuadre Rápido.</p>'+
+      '<div class="two"><a class="btn primary" href="'+esc(url)+'" target="_blank" rel="noopener">Abrir Cuadre Rápido</a><button class="btn" type="button" id="rapCopiar" data-url="'+esc(url)+'">Copiar enlace</button></div>'
+    :'<div class="two"><button class="btn primary" type="button" id="rapVer">Ver Cuadre Rápido</button></div>')+'</div>';
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest&&e.target.closest('#rapSalir,#rapVer,#rapCopiar');if(!t)return;
+  if(t.id==='rapSalir'){rapidoOn=false;go('inicio');return}
+  if(t.id==='rapVer'){rapidoOn=true;go('rapido');return}
+  if(t.id==='rapCopiar'){const u=t.dataset.url;(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>toast('Enlace copiado')).catch(()=>toast(u))}
+});
 /* ---------- Avisos de pagos y cobros por vencer ---------- */
 // Junta las fechas que el usuario puso: cuotas de créditos y fecha límite de deudas con personas
 function vencimientos(){
@@ -1884,7 +1947,7 @@ try{_obs.observe(document.body,{childList:true,subtree:true,characterData:true})
 /* ---------- Diccionario inglés ---------- */
 I18N.dic={
 // Navegación y generales
-'Inicio':'Home','Miembro Premium':'Premium member','Hora':'Time','Modo sin conexión':'Offline mode','Sin internet.':'No internet.','Listo: se subió a la nube el cambio que hiciste sin internet':'Done: the change you made offline was uploaded','Puedes seguir usando Cuadre normalmente.':'You can keep using Cuadre as usual.','Lo que registres se guarda en este equipo y se sube solo a tu cuenta cuando vuelva la conexión.':'Whatever you add is saved on this device and uploads to your account automatically when you\'re back online.','Sin internet · usando lo guardado aquí':'Offline · using data saved here','Mis categorías':'My categories','Crea tus propias categorías. Toca una para cambiarle el nombre.':'Create your own categories. Tap one to rename it.','Gastos':'Expenses','Ingresos':'Income','Agregar':'Add','Ej. Seguro, Peluquería':'e.g. Insurance, Haircut','Ej. Alquiler, Comisiones':'e.g. Rent, Commissions','Aún no tienes categorías propias de gastos.':'You have no custom expense categories yet.','Aún no tienes categorías propias de ingresos.':'You have no custom income categories yet.','Cambiar nombre':'Rename','Escribe el nombre de la categoría.':'Type the category name.','Membresía activa':'Active membership','Bienvenido a Cuadre Premium':'Welcome to Cuadre Premium','Gracias por apoyar a Cuadre. Ya tienes todas las funciones, sin límites.':'Thanks for supporting Cuadre. You now have every feature, with no limits.','Movimientos':'Transactions','Métodos de pago':'Payment methods','Métodos':'Methods','Deudas':'Debts','Perfil':'Profile','Administrador':'Admin','Configuración':'Settings',
+'Inicio':'Home','Miembro Premium':'Premium member','Hora':'Time','Cuadre Rápido':'Cuadre Quick','Total restante':'Remaining total','Ingresos del mes':'Income this month','Egresos del mes':'Expenses this month','Abrir Cuadre completo →':'Open full Cuadre →','Abrir Cuadre Rápido':'Open Cuadre Quick','Copiar enlace':'Copy link','Ver Cuadre Rápido':'View Cuadre Quick','Enlace copiado':'Link copied','Primero agrega un método de pago':'Add a payment method first','Un acceso directo en tu pantalla de inicio: al tocarlo ves al instante ingresos, egresos y tu total restante, y registras con un toque. Sin entrar a toda la app.':'A shortcut on your home screen: tap it to instantly see income, expenses and your remaining total, and record with one tap. No need to open the whole app.','En Android también puedes mantener presionado el ícono de Cuadre para ver atajos: Registrar gasto, Registrar ingreso y Cuadre Rápido.':'On Android you can also press and hold the Cuadre icon for shortcuts: Add expense, Add income and Cuadre Quick.','Modo sin conexión':'Offline mode','Sin internet.':'No internet.','Listo: se subió a la nube el cambio que hiciste sin internet':'Done: the change you made offline was uploaded','Puedes seguir usando Cuadre normalmente.':'You can keep using Cuadre as usual.','Lo que registres se guarda en este equipo y se sube solo a tu cuenta cuando vuelva la conexión.':'Whatever you add is saved on this device and uploads to your account automatically when you\'re back online.','Sin internet · usando lo guardado aquí':'Offline · using data saved here','Mis categorías':'My categories','Crea tus propias categorías. Toca una para cambiarle el nombre.':'Create your own categories. Tap one to rename it.','Gastos':'Expenses','Ingresos':'Income','Agregar':'Add','Ej. Seguro, Peluquería':'e.g. Insurance, Haircut','Ej. Alquiler, Comisiones':'e.g. Rent, Commissions','Aún no tienes categorías propias de gastos.':'You have no custom expense categories yet.','Aún no tienes categorías propias de ingresos.':'You have no custom income categories yet.','Cambiar nombre':'Rename','Escribe el nombre de la categoría.':'Type the category name.','Membresía activa':'Active membership','Bienvenido a Cuadre Premium':'Welcome to Cuadre Premium','Gracias por apoyar a Cuadre. Ya tienes todas las funciones, sin límites.':'Thanks for supporting Cuadre. You now have every feature, with no limits.','Movimientos':'Transactions','Métodos de pago':'Payment methods','Métodos':'Methods','Deudas':'Debts','Perfil':'Profile','Administrador':'Admin','Configuración':'Settings',
 'Registrar gasto':'Add expense','Registrar movimiento':'Add transaction','Guardado en tu cuenta':'Saved to your account','Guardado en este dispositivo':'Saved on this device','Guardado en tu cuenta de Claude':'Saved to your Claude account',
 'Cargando…':'Loading…','Cargando tus datos…':'Loading your data…','Un momento.':'One moment.','Cancelar':'Cancel','Guardar':'Save','Editar':'Edit','Eliminar':'Delete','Cerrar':'Close','Listo':'Done','Quitar':'Remove','Copiar':'Copy','Copiado':'Copied','Actualizar':'Refresh','Ver todos':'See all','Volver':'Back','← Volver':'← Back','Menú':'Menu','Nuevo':'New','Todos':'All','Resumen':'Summary','Falta':'Missing','Desde':'From','Hacia':'To','Fecha':'Date','Nota':'Note','Monto':'Amount','Moneda':'Currency','Categoría':'Category','Descripción':'Description','Estado':'Status','Mañana':'Tomorrow','Hoy':'Today','Ayer':'Yesterday','Ahora':'Now','Nunca':'Never','Vencido':'Overdue','al mes':'per month','al año':'per year',
 // Inicio
@@ -2076,7 +2139,8 @@ function monthTotals(k){
 /* ---------- Vistas ---------- */
 let view='inicio',month=today().slice(0,7),fTipo='todos',fMet='';
 try{const v=localStorage.getItem(LS+':view');if(['inicio','movs','metodos','deudas','perfil'].includes(v))view=v}catch(e){}
-function go(v){if(v==='admin'){if(!esAdminNube())v='inicio';else setTimeout(cargarAdmin,0)}view=v;try{localStorage.setItem(LS+':view',v)}catch(e){}render();window.scrollTo(0,0)}
+if(esRapido)view='rapido';
+function go(v){if(v!=='rapido')rapidoOn=false;if(v==='admin'){if(!esAdminNube())v='inicio';else setTimeout(cargarAdmin,0)}view=v;try{if(v!=='rapido')localStorage.setItem(LS+':view',v)}catch(e){}render();window.scrollTo(0,0)}
 
 
 /* ---------- Foto de perfil (para todos) ---------- */
@@ -2116,7 +2180,8 @@ function render(){
   if(mode==='nube'&&!legalOk()){document.body.classList.add('onb');$('#view').innerHTML=banner+vAceptar();setStatus('ok','Guardado en tu cuenta');return}
   if(!tienePerfil()){document.body.classList.add('onb');$('#view').innerHTML=banner+vRegistro();const[k0,t0]=statusNow();setStatus(k0,t0);return}
   document.body.classList.remove('onb');
-  const body=({inicio:vInicio,movs:vMovs,metodos:vMetodos,deudas:vDeudas,perfil:vPerfil,premium:vPremium,admin:vAdmin}[view]||vInicio)();
+  document.body.classList.toggle('modo-rapido',view==='rapido');revisarAccion();
+  const body=({rapido:vRapido,inicio:vInicio,movs:vMovs,metodos:vMetodos,deudas:vDeudas,perfil:vPerfil,premium:vPremium,admin:vAdmin}[view]||vInicio)();
   const _fa=document.activeElement,_fid=_fa&&_fa.id==='admBuscar'?_fa.id:null;
   $('#view').innerHTML=banner+(view==='inicio'?bienvenidaPremium()+avisosCard()+avisoPlan()+instalarCard(false):view==='deudas'?permisoNotifCard()+avisosCard():'')+body;
   if(ready())setTimeout(revisarNotificaciones,800);
@@ -2592,7 +2657,7 @@ function vPerfil(){
     row('Usando Cuadre desde',desde?esc(longDate(desde)):'')+'</dl></div>';
   o+='<div class="card"><div class="card-h"><h2>Resumen</h2></div><dl class="kv">'+row('Métodos de pago',String(metodos.length))+row('Movimientos',String(movs.length))+row('Deudas activas',String(deudas.filter(d=>pendiente(d)>0.004).length))+'</dl></div>';
   o+=accesoAdminCard();
-  o+=planCard()+instalarCard(true)+cuentaCards()+zonaDatosCard();
+  o+=planCard()+instalarCard(true)+rapidoCard()+cuentaCards()+zonaDatosCard();
   if(mode!=='nube')o+='<p class="hint" style="margin:0">'+(mode==='cuenta'?'Versión de prueba: tus datos se guardan en tu cuenta de Claude y solo tú los ves. En la versión para tiendas el registro tendrá verificación de correo y contraseña.':'Versión de prueba: tus datos se guardan solo en este navegador. Si borras los datos del navegador o cambias de dispositivo, no se pasan.')+'</p>';
   return o;
 }

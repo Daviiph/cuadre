@@ -1,6 +1,6 @@
 // Cuadre: abre rápido y sin internet. Siempre intenta la versión nueva primero.
-const C='cuadre-v2';
-const BASE=['./','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png'];
+const C='cuadre-v3';
+const BASE=['./','./rapido.html','./manifest.webmanifest','./manifest-rapido.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png','./icon-rapido-180.png','./icon-rapido-192.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(BASE)).catch(()=>{}));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
 const guardar=(r,res)=>{if(res&&(res.ok||res.type==='opaque')){const cp=res.clone();caches.open(C).then(c=>c.put(r,cp)).catch(()=>{})}return res};

@@ -1,0 +1,30 @@
+{
+ "id": "./rapido.html",
+ "name": "Cuadre Rápido",
+ "short_name": "Cuadre Rápido",
+ "description": "Ingresos, egresos y total restante de un vistazo.",
+ "lang": "es",
+ "start_url": "./rapido.html",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#F4F3F8",
+ "theme_color": "#7B3FE4",
+ "icons": [
+  {
+   "src": "icon-rapido-192.png",
+   "sizes": "192x192",
+   "type": "image/png"
+  },
+  {
+   "src": "icon-rapido-512.png",
+   "sizes": "512x512",
+   "type": "image/png"
+  },
+  {
+   "src": "icon-rapido-maskable.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}
