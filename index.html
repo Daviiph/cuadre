@@ -424,6 +424,28 @@ textarea.input{resize:vertical;min-height:70px;font:inherit}
 .chip-f{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-weight:600;font-size:.82rem;cursor:pointer;color:var(--ink)}
 .chip-f[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
 .adm-add{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}.adm-add .field{flex:1;min-width:220px;margin:0}
+.precios-op{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.precio-op{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:16px;border-radius:18px;border:2px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;transition:background .15s,border-color .15s,transform .1s}
+.precio-op:hover{border-color:var(--accent)}.precio-op:active{transform:scale(.98)}
+.po-top{display:flex;align-items:center;gap:8px;font-weight:700;font-size:.9rem;flex-wrap:wrap}
+.po-top em{font-style:normal;font-size:.7rem;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.po-radio{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);flex:none;display:grid;place-items:center}
+.precio-op b{font-size:2rem;font-weight:800;letter-spacing:-.02em;margin-top:6px}
+.po-cada{color:var(--muted);font-size:.85rem}
+.precio-op[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);box-shadow:0 10px 26px rgba(123,63,228,.3)}
+.precio-op[aria-pressed="true"] .po-cada{color:rgba(255,255,255,.85)}
+.precio-op[aria-pressed="true"] .po-radio{border-color:#fff;background:#fff;box-shadow:inset 0 0 0 4px var(--accent)}
+.precio-op[aria-pressed="true"] .po-top em{background:rgba(255,255,255,.22);color:#fff}
+.met-op{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.met-btn{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;border:2px solid var(--line);background:var(--surface);color:var(--ink);font-weight:700;cursor:pointer;text-align:left;transition:background .15s,border-color .15s}
+.met-btn:hover{border-color:var(--accent)}
+.met-ico{width:38px;height:38px;border-radius:12px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none}
+.met-btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.met-btn[aria-pressed="true"] .met-ico{background:rgba(255,255,255,.2);color:#fff}
+.cobro.sel{grid-template-columns:auto 1fr auto;align-items:center;margin-bottom:12px}
+.cobro.sel>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.cobro.sel .btn{grid-column:auto;grid-row:auto}
+.resumen-sel{margin:0;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:10px 12px;border-radius:12px;font-size:.9rem}
 </style>
 
 <div class="app">
@@ -986,6 +1008,13 @@ const diasHasta=iso=>Math.ceil((new Date(iso)-Date.now())/864e5);
 const fechaCorta=iso=>{const d=new Date(iso);return isNaN(d)?'':d.toLocaleDateString('es-VE',{day:'numeric',month:'long',year:'numeric'})};
 const usd=n=>'$'+(Math.round((+n||0)*100)/100).toLocaleString('es-VE');
 const COBRO_CAMPOS=[['pago_movil','Pago Móvil'],['binance','Binance Pay'],['zinli','Zinli'],['zelle','Zelle'],['otro','Otro método']];
+const ICO_COBRO={
+  pago_movil:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2M10 8l2-2 2 2M12 6v6"/>',
+  binance:'<circle cx="12" cy="12" r="9"/><path d="M14.6 9.6c-.4-1-1.4-1.6-2.6-1.6-1.5 0-2.6.8-2.6 1.9 0 2.7 5.2 1.4 5.2 4.2 0 1.1-1.1 1.9-2.6 1.9-1.3 0-2.3-.6-2.7-1.6M12 6.5V8M12 16v1.5"/>',
+  zinli:'<path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18v3"/><rect x="4" y="8" width="16" height="11" rx="2.5"/><path d="M16 13.5h.01"/>',
+  zelle:'<path d="M4 8h14l-3-3M20 16H6l3 3"/>',
+  otro:'<circle cx="12" cy="12" r="9"/><path d="M8 12h.01M12 12h.01M16 12h.01"/>'};
+const icoCobro=k=>'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+(ICO_COBRO[k]||ICO_COBRO.otro)+'</svg>';
 const metodosCobro=()=>COBRO_CAMPOS.filter(([k])=>plan.cobro&&String(plan.cobro[k]||'').trim());
 async function cargarPlan(){
   try{const[i,a]=await Promise.all([nubeRpc('mi_plan',{}),api('/rest/v1/ajustes?select=cobro&id=eq.1')]);plan.info=i||{premium:false};plan.cobro=(a&&a[0]&&a[0].cobro)||{};render()}
@@ -1028,22 +1057,25 @@ function vPremium(){
     fila('Gráficas e historial','Últimos '+LIM.meses+' meses','Completo')+fila('Categorías propias','No','Sí')+
     fila('Asistente financiero','No','Sí <small>(próximamente)</small>')+fila('Recordatorios de cuotas','No','Sí <small>(próximamente)</small>')+fila('Exportar a Excel o PDF','No','Sí <small>(próximamente)</small>')+
     '</tbody></table></div><p class="hint" style="margin:10px 0 0">Si tu Premium vence, nunca pierdes tus datos: los sigues viendo y puedes seguir registrando gastos.</p></div>';
-  o+='<div class="g2 precios"><div class="card precio"><small>Mensual</small><b>'+usd(pm)+'</b><span>al mes</span></div><div class="card precio dest"><small>Anual · ahorras '+usd(pm*12-pa)+'</small><b>'+usd(pa)+'</b><span>al año</span></div></div>';
-  if(e.tipo==='admin')return o+'<p class="hint" style="margin:0">Así ven esta pantalla tus usuarios. Tus datos de cobro y los pagos por aprobar están en Perfil → Panel de administrador.</p>';
+  const per=(k,tit,precio,cada,extra)=>'<button type="button" class="precio-op" data-per="'+k+'" aria-pressed="'+(rep.periodo===k)+'"><span class="po-top"><span class="po-radio" aria-hidden="true"></span>'+tit+(extra?'<em>'+extra+'</em>':'')+'</span><b>'+usd(precio)+'</b><span class="po-cada">'+cada+'</span></button>';
+  const ahorro=pm*12-pa;
+  o+='<div class="card"><div class="card-h"><div><h2>1. Elige tu plan</h2><p class="sub">Toca el que prefieras.</p></div></div><div class="precios-op" role="radiogroup" aria-label="Plan">'+
+    per('mes','Mensual',pm,'al mes','')+per('anio','Anual',pa,'al año',ahorro>0?'Ahorras '+usd(ahorro):'')+'</div></div>';
+  if(e.tipo==='admin')return o+'<p class="hint" style="margin:0">Así ven esta pantalla tus usuarios. Tus datos de cobro y los pagos por aprobar están en la ventana Administrador.</p>';
   const mc=metodosCobro();
-  o+='<div class="card"><div class="card-h"><div><h2>1. Paga</h2><p class="sub">Usa cualquiera de estos métodos. El monto es en dólares; si pagas en bolívares, usa la tasa del día.</p></div></div>'+
-    (mc.length?'<div class="cobro-list">'+mc.map(([k,n])=>'<div class="cobro"><b>'+n+'</b><pre>'+esc(c[k])+'</pre><button class="btn sm" type="button" data-copiar="'+k+'">Copiar</button></div>').join('')+'</div>':'<p class="muted" style="margin:0">Pronto podrás pagar aquí. Vuelve en unos días.</p>')+'</div>';
-  if(mc.length){
-    if(!rep.metodo)rep.metodo=mc[0][1];
-    o+='<div class="card rep"><div class="card-h"><div><h2>2. Reporta tu pago</h2><p class="sub">Cuando lo verifiquemos, tu cuenta pasa a Premium. Suele tardar menos de un día.</p></div></div>'+
-      '<div class="seg" role="radiogroup" aria-label="Plan"><button type="button" data-per="mes" aria-pressed="'+(rep.periodo==='mes')+'">Mensual · '+usd(pm)+'</button><button type="button" data-per="anio" aria-pressed="'+(rep.periodo==='anio')+'">Anual · '+usd(pa)+'</button></div>'+
-      '<div class="field"><label class="lbl" for="repMet">Método con el que pagaste</label><select class="input" id="repMet">'+mc.map(([,n])=>'<option'+(n===rep.metodo?' selected':'')+'>'+n+'</option>').join('')+'</select></div>'+
-      (esBinance()?'<div class="bin-box"><b>Envía exactamente '+usd(precioDe(rep.periodo)).replace('$','')+' USDT</b><span>Desde Binance: Pagar → Enviar → al correo o Pay ID de arriba. Luego abre el detalle del pago y copia el <b>ID de la orden</b> (Order ID). Tu Premium se activa solo en segundos.</span></div>'+
-        campo('repRef','ID de la orden de Binance Pay',rep.referencia,'maxlength="60" autocomplete="off" inputmode="numeric" placeholder="Ej. 3504 1234 5678 9012"')
-      :'<div class="two">'+campo('repRef','Número de referencia',rep.referencia,'maxlength="60" autocomplete="off" placeholder="Ej. 004512"')+campo('repMonto','Monto pagado',rep.monto,'maxlength="30" autocomplete="off" placeholder="Ej. $2 o Bs 2.030"')+'</div>')+
-      (rep.info?'<p class="ok-msg">'+esc(rep.info)+'</p>':'')+
-      '<div class="err"'+(rep.err?'':' hidden')+'>'+esc(rep.err)+'</div><button class="btn primary block" type="button" id="repGo"'+(rep.enviando?' disabled':'')+'>'+(rep.enviando?(esBinance()?'Verificando con Binance…':'Enviando…'):(esBinance()?'Verificar mi pago':'Enviar reporte de pago'))+'</button></div>';
-  }
+  if(!mc.length)return o+'<div class="card"><p class="muted" style="margin:0">Pronto podrás pagar aquí. Vuelve en unos días.</p></div>';
+  if(!mc.some(([,n])=>n===rep.metodo))rep.metodo=mc[0][1];
+  const sel=mc.find(([,n])=>n===rep.metodo);
+  o+='<div class="card"><div class="card-h"><div><h2>2. Elige cómo pagar</h2><p class="sub">El precio es en dólares; si pagas en bolívares, usa la tasa del día.</p></div></div>'+
+    '<div class="met-op" role="radiogroup" aria-label="Método de pago">'+mc.map(([k,n])=>'<button type="button" class="met-btn" data-met="'+esc(n)+'" aria-pressed="'+(n===rep.metodo)+'"><span class="met-ico" aria-hidden="true">'+icoCobro(k)+'</span><span>'+n+'</span></button>').join('')+'</div>'+
+    '<div class="cobro sel"><span class="met-ico" aria-hidden="true">'+icoCobro(sel[0])+'</span><div><b>'+sel[1]+'</b><pre>'+esc(c[sel[0]])+'</pre></div><button class="btn sm" type="button" data-copiar="'+sel[0]+'">Copiar</button></div>'+
+    (esBinance()?'<div class="bin-box"><b>Envía exactamente '+usd(precioDe(rep.periodo)).replace('$','')+' USDT</b><span>Desde Binance: Pagar → Enviar → al correo o Pay ID de arriba. Luego abre el detalle del pago y copia el <b>ID de la orden</b> (Order ID). Tu Premium se activa solo en segundos.</span></div>':'<p class="hint" style="margin:0">Monto a pagar: <b>'+usd(precioDe(rep.periodo))+'</b> ('+(rep.periodo==='anio'?'plan anual':'plan mensual')+').</p>')+'</div>';
+  o+='<div class="card rep"><div class="card-h"><div><h2>3. Reporta tu pago</h2><p class="sub">'+(esBinance()?'Pega el ID de la orden y tu Premium se activa solo.':'Cuando lo verifiquemos, tu cuenta pasa a Premium. Suele tardar menos de un día.')+'</p></div></div>'+
+    '<p class="resumen-sel">'+(rep.periodo==='anio'?'Plan anual':'Plan mensual')+' · '+usd(precioDe(rep.periodo))+' · '+esc(rep.metodo)+'</p>'+
+    (esBinance()?campo('repRef','ID de la orden de Binance Pay',rep.referencia,'maxlength="60" autocomplete="off" inputmode="numeric" placeholder="Ej. 3504 1234 5678 9012"')
+    :'<div class="two">'+campo('repRef','Número de referencia',rep.referencia,'maxlength="60" autocomplete="off" placeholder="Ej. 004512"')+campo('repMonto','Monto pagado',rep.monto,'maxlength="30" autocomplete="off" placeholder="Ej. $2 o Bs 2.030"')+'</div>')+
+    (rep.info?'<p class="ok-msg">'+esc(rep.info)+'</p>':'')+
+    '<div class="err"'+(rep.err?'':' hidden')+'>'+esc(rep.err)+'</div><button class="btn primary block" type="button" id="repGo"'+(rep.enviando?' disabled':'')+'>'+(rep.enviando?(esBinance()?'Verificando con Binance…':'Enviando…'):(esBinance()?'Verificar mi pago':'Enviar reporte de pago'))+'</button></div>';
   if(plan.pagos&&plan.pagos.length){
     const est={pendiente:['neutral','En revisión'],aprobado:['ok','Aprobado'],rechazado:['bad','Rechazado']};
     o+='<div class="card"><div class="card-h"><h2>Mis pagos reportados</h2></div><div class="adm-list">'+plan.pagos.map(p=>{const s=est[p.estado]||est.pendiente;return '<div class="adm-row pago"><div class="adm-main"><b>'+(p.periodo==='anio'?'Anual':'Mensual')+' · '+esc(p.monto)+'</b><span>'+esc(p.metodo)+' · Ref. '+esc(p.referencia)+'</span><small>'+esc(fechaHora(p.creado))+(p.nota?' · '+esc(p.nota):'')+'</small></div><div class="pago-btns">'+(p.estado==='pendiente'&&p.metodo==='Binance Pay'?'<button class="btn sm" type="button" data-verif="'+p.id+'">Verificar</button>':'')+'<span class="st '+s[0]+'">'+s[1]+'</span></div></div>'}).join('')+'</div></div>';
@@ -1146,8 +1178,9 @@ const REPF={repRef:'referencia',repMonto:'monto'};
 document.addEventListener('input',e=>{const id=e.target.id;if(REPF[id])rep[REPF[id]]=e.target.value;else if(id.startsWith('cob_'))cob.v[id.slice(4)]=e.target.value});
 document.addEventListener('change',e=>{if(e.target.id==='repMet'){rep.metodo=e.target.value;rep.err='';render()}});
 document.addEventListener('click',e=>{
-  const t=e.target.closest&&e.target.closest('[data-verif],[data-premium],[data-per],#repGo,[data-pago],#pendRec,#cobAbrir,#cobCancel,#cobGuardar,[data-copiar]');if(!t)return;
-  if(t.dataset.verif){t.disabled=true;t.textContent='Verificando…';verificarBinance(t.dataset.verif,false).then(()=>cargarMisPagos())}
+  const t=e.target.closest&&e.target.closest('[data-met],[data-verif],[data-premium],[data-per],#repGo,[data-pago],#pendRec,#cobAbrir,#cobCancel,#cobGuardar,[data-copiar]');if(!t)return;
+  if(t.dataset.met){rep.metodo=t.dataset.met;rep.err='';rep.info='';render()}
+  else if(t.dataset.verif){t.disabled=true;t.textContent='Verificando…';verificarBinance(t.dataset.verif,false).then(()=>cargarMisPagos())}
   else if(t.dataset.premium){plan.motivo='';irPremium()}
   else if(t.dataset.per){rep.periodo=t.dataset.per;render()}
   else if(t.id==='repGo')reportarPago();
