@@ -677,10 +677,13 @@ function convertir(a,from,to){if(from===to)return a;const u=toUSD(a,from);if(u==
 function dual(pairs){
   pairs=pairs.filter(([,v])=>Math.abs(v)>0.004);
   if(!pairs.length)return{main:money(0,'USD'),sub:''};
-  const ves=pairs.filter(([c])=>c==='VES');
-  if(!ves.length||!tasa())return{main:fmtCur(pairs),sub:''};
-  const t=usdTotal(pairs);const extra=pairs.filter(([c])=>t.miss.includes(c));
-  return{main:money(t.t,'USD')+(extra.length?' + '+fmtCur(extra):''),sub:(pairs.length>ves.length?'Incluye ':'')+fmtCur(ves)};
+  // Todo lo que se puede pasar a dólares (USD, USDT y bolívares con tasa) se suma en un solo total
+  const t=usdTotal(pairs),conv=pairs.filter(([c])=>!t.miss.includes(c)),extra=pairs.filter(([c])=>t.miss.includes(c));
+  const ves=conv.filter(([c])=>c==='VES');
+  if(conv.length<=1&&!ves.length)return{main:fmtCur(pairs),sub:''};
+  if(!conv.length)return{main:fmtCur(pairs),sub:''};
+  const det=conv.filter(([c])=>c!=='USD');
+  return{main:money(t.t,'USD')+(extra.length?' + '+fmtCur(extra):''),sub:det.length?(conv.length>det.length||det.length>1||!ves.length?'Incluye ':'')+fmtCur(det):''};
 }
 function tasasTxt(){return tasa()?'Binance '+money(tasa(),'VES')+(tasaBcv()?' · BCV '+money(tasaBcv(),'VES'):''):'Poner tasa del dólar'}
 const tileVal=p=>{const d=dual(p);return '<b>'+(p.length?d.main:'0')+'</b>'+(d.sub?'<small>'+d.sub+'</small>':'')};
