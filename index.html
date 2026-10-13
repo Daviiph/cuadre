@@ -498,6 +498,9 @@ textarea.input{resize:vertical;min-height:70px;font:inherit}
 .foto-btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .foto-cam{position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;background:var(--surface);color:var(--accent);border:2px solid var(--accent);display:grid;place-items:center}
 .foto-wrap .link{font-size:.78rem;color:var(--muted)}
+.banner.off{display:flex;gap:10px;align-items:flex-start;flex-wrap:nowrap;justify-content:flex-start;background:var(--accent-soft);color:var(--ink);border-color:transparent}
+.banner.off .off-ico{color:var(--accent);flex:none;margin-top:1px}
+
 .cat-list{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 2px}
 .tag.catx .cat-nm{border:0;background:none;padding:0;font:inherit;color:var(--ink);font-weight:600;cursor:pointer;text-decoration:underline dotted transparent}
 .cat-nm:hover{text-decoration-color:currentColor}
@@ -647,6 +650,7 @@ function defName(t,b){b=(b||'').trim();if(!b)return tipo(t).n;return({debito:'D�
 function setStatus(kind,txt){[['#dot','#statusTxt'],['#mdot','#mstatusTxt']].forEach(([d,t])=>{const a=$(d),b=$(t);if(a)a.className='dot '+kind;if(b)b.textContent=txt})}
 function statusNow(){
   if(lastSaveErr)return['err',lastSaveErr];
+  if(mode==='nube'&&(nube.offline||nube.pend))return['',nube.pend?'Sin internet · '+nube.pend+(nube.pend===1?' cambio por subir':' cambios por subir'):'Sin internet · usando lo guardado aquí'];
   if(enCuenta())return['ok','Guardado en tu cuenta'];
   if(mode==='local')return['ok','Guardado en este dispositivo'];
   return['','Cargando…'];
@@ -695,7 +699,7 @@ function leerSes(){try{const s=JSON.parse(localStorage.getItem(SES_KEY)||'null')
 function userInfo(u){return{id:u.id,email:u.email,verificado:!!(u.email_confirmed_at||u.confirmed_at),conClave:!!(u.user_metadata&&u.user_metadata.con_clave),terminos:(u.user_metadata&&u.user_metadata.terminos)||''}}
 function guardarSes(r){const s={access_token:r.access_token,refresh_token:r.refresh_token,expires_at:r.expires_at||Math.floor(Date.now()/1000)+(+r.expires_in||3600),user:userInfo(r.user)};nube.ses=s;try{localStorage.setItem(SES_KEY,JSON.stringify(s))}catch(e){}return s}
 function actualizarUsuario(u){if(!nube.ses||!u||!u.id)return;nube.ses.user=userInfo(u);try{localStorage.setItem(SES_KEY,JSON.stringify(nube.ses))}catch(e){}}
-function borrarSes(){try{if(nube.ses)localStorage.removeItem('cuadre-cache:'+nube.ses.user.id);localStorage.removeItem(SES_KEY)}catch(e){}nube.ses=null;nube.filas=null}
+function borrarSes(){try{if(nube.ses){localStorage.removeItem('cuadre-cache:'+nube.ses.user.id);localStorage.removeItem('cuadre-cola:'+nube.ses.user.id)}localStorage.removeItem(SES_KEY)}catch(e){}nube.ses=null;nube.filas=null}
 const volverA=()=>encodeURIComponent(location.origin+location.pathname);
 async function sfetch(path,opt,ms){
   opt=opt||{};let r;
@@ -716,12 +720,79 @@ async function token(){
 }
 async function api(path,opt){
   opt=opt||{};const tk=await token();
-  try{return await sfetch(path,{...opt,headers:{Authorization:'Bearer '+tk,...(opt.headers||{})}})}
+  try{return await sfetch(path,{...opt,headers:{Authorization:'Bearer '+tk,...(opt.headers||{})}},opt.ms)}
   catch(e){if(e.status===401){sesionVencida();throw{code:'sin_sesion'}}throw e}
 }
 const nubeRpc=(fn,args)=>api('/rest/v1/rpc/'+fn,{method:'POST',body:JSON.stringify(args||{})});
-const nubePut=(col,id,data)=>api('/rest/v1/docs?on_conflict=user_id,col,id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:nube.ses.user.id,col,id:String(id),data:clean(data),actualizado:new Date().toISOString()})}).then(r=>{if(nube.filas){nube.filas[col+'|'+id]=clean(data);guardarCache()}return r});
-const nubeDel=(col,id)=>api('/rest/v1/docs?col=eq.'+encodeURIComponent(col)+'&id=eq.'+encodeURIComponent(id),{method:'DELETE',headers:{Prefer:'return=minimal'}}).then(r=>{if(nube.filas){delete nube.filas[col+'|'+id];guardarCache()}return r});
+/* ---------- Sin conexión: los cambios se guardan aquí y se suben solos al volver internet ---------- */
+const colaKey=()=>'cuadre-cola:'+nube.ses.user.id;
+function leerCola(){try{return nube.ses?JSON.parse(localStorage.getItem(colaKey())||'{}')||{}:{}}catch(e){return{}}}
+function guardarCola(c){try{if(nube.ses){if(Object.keys(c).length)localStorage.setItem(colaKey(),JSON.stringify(c));else localStorage.removeItem(colaKey())}}catch(e){}nube.pend=Object.keys(c).length}
+const esRed=e=>!!e&&(e.code==='sin_conexion'||e.code==='timeout'||e.status>=500||e.status===0);
+function marcarFila(col,id,data){if(!nube.filas)return;const k=col+'|'+id;if(data===null)delete nube.filas[k];else nube.filas[k]=data;guardarCache()}
+function encolar(col,id,data){
+  const c=leerCola(),k=col+'|'+id,prev=c[k];
+  const e={col,id:String(id),data,t:Date.now()};
+  if(col==='cfg'&&data){ // recuerda qué partes de la configuración cambiaron, para mezclarlas con lo del servidor
+    const ant=(nube.filas&&nube.filas[k])||{},cl=new Set((prev&&prev.claves)||[]);
+    new Set([...Object.keys(ant),...Object.keys(data)]).forEach(x=>{if(JSON.stringify(ant[x])!==JSON.stringify(data[x]))cl.add(x)});
+    e.claves=[...cl];
+  }
+  c[k]=e;guardarCola(c);nube.offline=true;
+}
+function quitarDeCola(col,id){const c=leerCola(),k=col+'|'+id;if(c[k]){delete c[k];guardarCola(c)}}
+const subirDoc=(col,id,data)=>api('/rest/v1/docs?on_conflict=user_id,col,id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:nube.ses.user.id,col,id:String(id),data:clean(data),actualizado:new Date().toISOString()}),ms:9000});
+const borrarDoc=(col,id)=>api('/rest/v1/docs?col=eq.'+encodeURIComponent(col)+'&id=eq.'+encodeURIComponent(id),{method:'DELETE',headers:{Prefer:'return=minimal'},ms:9000});
+const sinRed=()=>navigator.onLine===false;
+async function nubePut(col,id,data){
+  const d=clean(data);
+  if(sinRed()||nube.pend){encolar(col,id,d);marcarFila(col,id,d);if(!sinRed())setTimeout(subirCola,0);return}
+  try{await subirDoc(col,id,d);nube.offline=false}
+  catch(e){if(!esRed(e))throw e;encolar(col,id,d)}
+  marcarFila(col,id,d);
+}
+async function nubeDel(col,id){
+  if(sinRed()||nube.pend){encolar(col,id,null);marcarFila(col,id,null);if(!sinRed())setTimeout(subirCola,0);return}
+  try{await borrarDoc(col,id);nube.offline=false}
+  catch(e){if(!esRed(e))throw e;encolar(col,id,null)}
+  marcarFila(col,id,null);
+}
+// Sube todo lo pendiente, en orden. Devuelve true si quedó todo arriba.
+let _subiendo=null;
+function subirCola(){
+  if(_subiendo)return _subiendo;
+  _subiendo=(async()=>{
+    if(mode!=='nube'||!nube.ses)return true;
+    const c=leerCola(),items=Object.values(c).sort((a,b)=>a.t-b.t);
+    if(!items.length){nube.pend=0;return true}
+    let subidos=0,rechazados=[];
+    for(const it of items){
+      try{
+        if(it.data===null)await borrarDoc(it.col,it.id);
+        else if(it.col==='cfg'&&it.claves){
+          let srv={};try{const r=await api('/rest/v1/docs?select=data&col=eq.cfg&id=eq.cfg&user_id=eq.'+nube.ses.user.id,{ms:9000});if(Array.isArray(r)&&r[0]&&r[0].data)srv=r[0].data}catch(e){if(esRed(e))throw e}
+          const m={...srv};it.claves.forEach(k=>{if(k in it.data)m[k]=it.data[k];else delete m[k]});
+          await subirDoc('cfg','cfg',m);marcarFila('cfg','cfg',clean(m));if(it.id==='cfg')cfg=clean(m);
+        }
+        else await subirDoc(it.col,it.id,it.data);
+        subidos++;
+      }catch(e){
+        if(esRed(e)||e.code==='sin_sesion'){nube.offline=e.code!=='sin_sesion';const q=leerCola();guardarCola(q);render();return false}
+        rechazados.push(it); // el servidor no lo aceptó (por ejemplo, límite del plan): se descarta
+      }
+      const q=leerCola(),k=it.col+'|'+it.id;if(q[k]&&q[k].t===it.t){delete q[k];guardarCola(q)}
+    }
+    nube.offline=false;
+    if(rechazados.length){rechazados.forEach(it=>{const k=it.col+'|'+it.id;if(nube.filas){delete nube.filas[k]}});guardarCache();setTimeout(()=>toast(rechazados.length===1?'Un cambio hecho sin internet no se pudo guardar (límite del plan Gratis).':rechazados.length+' cambios hechos sin internet no se pudieron guardar (límite del plan Gratis).'),300);cargarNube(false)}
+    else if(subidos)setTimeout(()=>toast(subidos===1?'Listo: se subió a la nube el cambio que hiciste sin internet':'Listo: se subieron a la nube los '+subidos+' cambios que hiciste sin internet'),200);
+    render();return !leerCola()||!Object.keys(leerCola()).length;
+  })().finally(()=>{_subiendo=null});
+  return _subiendo;
+}
+// Lo pendiente se vuelve a aplicar encima de lo que llega del servidor (lo hecho aquí es lo más nuevo)
+function aplicarCola(){const c=leerCola();Object.values(c).forEach(it=>{const k=it.col+'|'+it.id;if(it.data===null)delete nube.filas[k];else if(it.col==='cfg'&&it.claves){const m={...(nube.filas[k]||{})};it.claves.forEach(x=>{if(x in it.data)m[x]=it.data[x];else delete m[x]});nube.filas[k]=m}else nube.filas[k]=it.data});nube.pend=Object.keys(c).length}
+window.addEventListener('online',()=>{if(mode==='nube'&&nube.ses){nube.offline=false;render();subirCola().then(ok=>{if(ok)cargarNube(false)})}});
+window.addEventListener('offline',()=>{if(mode==='nube'){nube.offline=true;render()}});
 function sesionVencida(){if(mode!=='nube')return;borrarSes();resetDatos();mode='login';irPaso('entrar');login.err='Tu sesión se cerró. Vuelve a entrar.';closeSheetSafe();render()}
 function closeSheetSafe(){try{if(SH)closeSheet()}catch(e){}}
 function resetDatos(){if(typeof adm!=='undefined')Object.assign(adm,{lista:null,off:0,fin:false,resumen:null,equipo:null,devs:null,devOff:0,nombres:{},yo:null});nube.filas=null;nube.syncAt='';metodos=[];movs=[];deudas=[];cfg={};nube.cargado=false;nube.admin=false;nube.usuarios=null;plan.info=null;plan.pagos=null;plan.pendientes=null;plan.motivo='';nube.dispositivos=null}
@@ -773,7 +844,9 @@ const maxAct=(a,b)=>!a?b:!b?a:(new Date(a)>new Date(b)?a:b);
 async function cargarNube(primera){
   try{
     let completa=false;
-    if(primera&&!nube.filas){const c=leerCache();if(c){nube.filas=c.filas;nube.syncAt=c.syncAt;aplicarFilas();nube.cargado=true;render()}}
+    if(primera&&!nube.filas){const c=leerCache();if(c){nube.filas=c.filas;nube.syncAt=c.syncAt;aplicarCola();aplicarFilas();nube.cargado=true;render()}}
+    if(sinRed()&&nube.cargado){nube.offline=true;render();return}
+    if(leerCola()&&Object.keys(leerCola()).length){const ok=await subirCola();if(!ok){if(nube.cargado)return;throw{code:'sin_conexion'}}}
     if(!nube.filas||!nube.syncAt){
       const rows=await traerFilas('');completa=true;
       nube.filas={};nube.syncAt='';rows.forEach(r=>{nube.filas[r.col+'|'+r.id]=r.data||{};nube.syncAt=maxAct(nube.syncAt,r.actualizado)});
@@ -783,11 +856,11 @@ async function cargarNube(primera){
       rows.forEach(r=>{nube.filas[r.col+'|'+r.id]=r.data||{};nube.syncAt=maxAct(nube.syncAt,r.actualizado)});
       // ¿Se borró algo en otro dispositivo? Si el total no coincide, se recarga todo
       const cnt=await api('/rest/v1/docs?select=id&limit=1',{headers:{Prefer:'count=exact'},conTotal:true});
-      if(cnt&&cnt.total!=null&&cnt.total!==Object.keys(nube.filas).length){
+      if(!nube.pend&&cnt&&cnt.total!=null&&cnt.total!==Object.keys(nube.filas).length){
         const all=await traerFilas('');nube.filas={};nube.syncAt='';all.forEach(r=>{nube.filas[r.col+'|'+r.id]=r.data||{};nube.syncAt=maxAct(nube.syncAt,r.actualizado)});completa=true;
       }
     }
-    aplicarFilas();
+    aplicarCola();aplicarFilas();nube.offline=false;
     if(!reg.correo&&nube.ses)reg.correo=nube.ses.user.email;
     if(primera&&completa&&!Object.keys(nube.filas).length)await subirDatosLocales();
     guardarCache();
@@ -802,7 +875,8 @@ async function cargarNube(primera){
     }
   }catch(e){
     if(e.code==='sin_sesion')return;
-    bannerMsg=nube.cargado?'Sin conexión: ves tus datos guardados en este dispositivo ('+(e.code||'error')+').':'No se pudo conectar con tu cuenta ('+(e.code||'error')+'). Revisa tu internet y vuelve a abrir la app.';
+    if(nube.cargado&&esRed(e)){nube.offline=true;render();return}
+    bannerMsg=nube.cargado?'No se pudo actualizar desde tu cuenta ('+(e.code||'error')+'). Ves lo guardado en este dispositivo.':'No se pudo conectar con tu cuenta ('+(e.code||'error')+'). Revisa tu internet y vuelve a abrir la app.';
     render();
   }
 }
@@ -932,6 +1006,7 @@ function reenviarVerif(){return correr(async()=>{
   catch(e){login.err=authErr(e,'reenviar el correo')}
 })}
 function cerrarSesion(){
+  if(nube.pend&&!window.__salirIgual){toast('Tienes '+nube.pend+(nube.pend===1?' cambio':' cambios')+' sin subir. Conéctate a internet para no perderlos, o toca Cerrar sesión otra vez.');window.__salirIgual=true;setTimeout(()=>{window.__salirIgual=false},6000);subirCola();return}
   const s=nube.ses;
   if(s)sfetch('/auth/v1/logout',{method:'POST',headers:{Authorization:'Bearer '+s.access_token}}).catch(()=>{});
   borrarSes();resetDatos();irPaso('entrar');login.info='Cerraste sesión.';mode='login';go('inicio');
@@ -1803,7 +1878,7 @@ try{_obs.observe(document.body,{childList:true,subtree:true,characterData:true})
 /* ---------- Diccionario inglés ---------- */
 I18N.dic={
 // Navegación y generales
-'Inicio':'Home','Miembro Premium':'Premium member','Mis categorías':'My categories','Crea tus propias categorías. Toca una para cambiarle el nombre.':'Create your own categories. Tap one to rename it.','Gastos':'Expenses','Ingresos':'Income','Agregar':'Add','Ej. Seguro, Peluquería':'e.g. Insurance, Haircut','Ej. Alquiler, Comisiones':'e.g. Rent, Commissions','Aún no tienes categorías propias de gastos.':'You have no custom expense categories yet.','Aún no tienes categorías propias de ingresos.':'You have no custom income categories yet.','Cambiar nombre':'Rename','Escribe el nombre de la categoría.':'Type the category name.','Membresía activa':'Active membership','Bienvenido a Cuadre Premium':'Welcome to Cuadre Premium','Gracias por apoyar a Cuadre. Ya tienes todas las funciones, sin límites.':'Thanks for supporting Cuadre. You now have every feature, with no limits.','Movimientos':'Transactions','Métodos de pago':'Payment methods','Métodos':'Methods','Deudas':'Debts','Perfil':'Profile','Administrador':'Admin','Configuración':'Settings',
+'Inicio':'Home','Miembro Premium':'Premium member','Hora':'Time','Sin internet.':'No internet.','Listo: se subió a la nube el cambio que hiciste sin internet':'Done: the change you made offline was uploaded','Puedes seguir usando Cuadre normalmente.':'You can keep using Cuadre as usual.','Lo que registres se guarda en este equipo y se sube solo a tu cuenta cuando vuelva la conexión.':'Whatever you add is saved on this device and uploads to your account automatically when you\'re back online.','Sin internet · usando lo guardado aquí':'Offline · using data saved here','Mis categorías':'My categories','Crea tus propias categorías. Toca una para cambiarle el nombre.':'Create your own categories. Tap one to rename it.','Gastos':'Expenses','Ingresos':'Income','Agregar':'Add','Ej. Seguro, Peluquería':'e.g. Insurance, Haircut','Ej. Alquiler, Comisiones':'e.g. Rent, Commissions','Aún no tienes categorías propias de gastos.':'You have no custom expense categories yet.','Aún no tienes categorías propias de ingresos.':'You have no custom income categories yet.','Cambiar nombre':'Rename','Escribe el nombre de la categoría.':'Type the category name.','Membresía activa':'Active membership','Bienvenido a Cuadre Premium':'Welcome to Cuadre Premium','Gracias por apoyar a Cuadre. Ya tienes todas las funciones, sin límites.':'Thanks for supporting Cuadre. You now have every feature, with no limits.','Movimientos':'Transactions','Métodos de pago':'Payment methods','Métodos':'Methods','Deudas':'Debts','Perfil':'Profile','Administrador':'Admin','Configuración':'Settings',
 'Registrar gasto':'Add expense','Registrar movimiento':'Add transaction','Guardado en tu cuenta':'Saved to your account','Guardado en este dispositivo':'Saved on this device','Guardado en tu cuenta de Claude':'Saved to your Claude account',
 'Cargando…':'Loading…','Cargando tus datos…':'Loading your data…','Un momento.':'One moment.','Cancelar':'Cancel','Guardar':'Save','Editar':'Edit','Eliminar':'Delete','Cerrar':'Close','Listo':'Done','Quitar':'Remove','Copiar':'Copy','Copiado':'Copied','Actualizar':'Refresh','Ver todos':'See all','Volver':'Back','← Volver':'← Back','Menú':'Menu','Nuevo':'New','Todos':'All','Resumen':'Summary','Falta':'Missing','Desde':'From','Hacia':'To','Fecha':'Date','Nota':'Note','Monto':'Amount','Moneda':'Currency','Categoría':'Category','Descripción':'Description','Estado':'Status','Mañana':'Tomorrow','Hoy':'Today','Ayer':'Yesterday','Ahora':'Now','Nunca':'Never','Vencido':'Overdue','al mes':'per month','al año':'per year',
 // Inicio
@@ -1922,6 +1997,12 @@ I18N.reglas.push(
   [/^Plan Gratis$/,()=>'Free plan']
 );
 Object.assign(I18N.dic,{'Cambiar foto de perfil':'Change profile photo','Cambiar foto':'Change photo','Quitar foto':'Remove photo','¿Quitar?':'Remove?','Foto de perfil actualizada':'Profile photo updated','Foto quitada':'Photo removed','Elige una imagen (JPG o PNG).':'Choose an image (JPG or PNG).'});
+I18N.reglas.push(
+  [/^Sin internet · (\d+) cambios? por subir$/,(_,n)=>'Offline · '+n+(n==='1'?' change':' changes')+' to upload'],
+  [/^Tienes (\d+) cambios? guardados? en este equipo; se suben solos a tu cuenta cuando vuelva la conexión\.$/,(_,n)=>'You have '+n+(n==='1'?' change':' changes')+' saved on this device; '+(n==='1'?'it uploads':'they upload')+' to your account automatically when you\'re back online.'],
+  [/^Listo: se subieron a la nube los (\d+) cambios que hiciste sin internet$/,(_,n)=>'Done: the '+n+' changes you made offline were uploaded'],
+  [/^Tienes (\d+) cambios? sin subir\. Conéctate a internet para no perderlos, o toca Cerrar sesión otra vez\.$/,(_,n)=>'You have '+n+' unsynced '+(n==='1'?'change':'changes')+'. Go online so you don\'t lose '+(n==='1'?'it':'them')+', or tap Sign out again.']
+);
 function dbFail(e){
   const code=e&&e.code||'error';
   if(!ready()){bannerMsg='No se pudo conectar con tu cuenta ('+code+'). Cierra y vuelve a abrir la app.'}
@@ -1931,7 +2012,7 @@ function dbFail(e){
 function saveLocal(){localStorage.setItem(LS,JSON.stringify({metodos,movs,deudas,cfg}))}
 // Cambios a la configuración en fila: cada uno se aplica sobre la versión más reciente (así uno no borra al otro)
 let _colaCfg=Promise.resolve();
-async function cfgFresca(){if(mode==='nube'&&nube.ses){try{const r=await api('/rest/v1/docs?select=data&col=eq.cfg&id=eq.cfg&user_id=eq.'+nube.ses.user.id);if(Array.isArray(r)&&r[0]&&r[0].data)return clean(r[0].data)}catch(e){}}return clean(cfg||{})}
+async function cfgFresca(){if(mode==='nube'&&nube.ses&&!sinRed()&&!nube.pend&&!nube.offline){try{const r=await api('/rest/v1/docs?select=data&col=eq.cfg&id=eq.cfg&user_id=eq.'+nube.ses.user.id,{ms:6000});if(Array.isArray(r)&&r[0]&&r[0].data)return clean(r[0].data)}catch(e){}}return clean(cfg||{})}
 function patchCfg(fn){const p=_colaCfg.then(async()=>{const obj=fn(await cfgFresca());await putCfg(obj);if(mode==='cuenta')cfg=clean(obj)});_colaCfg=p.catch(()=>{});return p}
 async function putCfg(obj){
   if(mode==='cuenta')await timeout(base.set(clean(obj)),15000);
@@ -2022,7 +2103,7 @@ function render(){
   const bb=(k,l)=>'<button type="button" data-nav="'+k+'"'+(view===k?' aria-current="page"':'')+'>'+svg(k,1.8)+'<span>'+l+'</span></button>';
   $('#bottombar').innerHTML=bb('inicio','Inicio')+bb('movs','Movimientos')+'<button type="button" class="fab" data-act="nuevo-gasto" aria-label="Registrar movimiento">'+svg('plus',2.6)+'</button>'+bb('metodos','Métodos')+bb('deudas','Deudas')+'<button type="button" data-nav="perfil"'+(view==='perfil'?' aria-current="page"':'')+'>'+svg('persona',1.8)+'<span>Perfil</span></button>';
   const ma=$('#mtopAdm');if(ma)ma.innerHTML=esAdminNube()?'<button class="btn sm mtop-adm" type="button" data-nav="admin"'+(view==='admin'?' aria-current="page"':'')+'>'+svg('admin',2)+'Administrador</button>':'';
-  const banner=bannerMsg?'<div class="banner"><span>'+esc(bannerMsg)+'</span></div>':'';
+  const banner=(bannerMsg?'<div class="banner"><span>'+esc(bannerMsg)+'</span></div>':'')+(mode==='nube'&&nube.offline&&ready()?'<div class="banner off" role="status"><span class="off-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 5.2-2.8M19 13a10 10 0 0 0-2.2-1.6M2 8.8a15 15 0 0 1 4.2-2.6M22 8.8A15 15 0 0 0 10.7 5"/><circle cx="12" cy="20" r=".8" fill="currentColor"/></svg></span><span><b>Sin internet.</b> <span>Puedes seguir usando Cuadre normalmente.</span> <span>'+(nube.pend?'Tienes '+nube.pend+(nube.pend===1?' cambio guardado':' cambios guardados')+' en este equipo; se suben solos a tu cuenta cuando vuelva la conexión.':'Lo que registres se guarda en este equipo y se sube solo a tu cuenta cuando vuelva la conexión.')+'</span></span></div>':'');
   if(verLegal){document.body.classList.add('onb');$('#view').innerHTML=vLegal();return}
   if(mode==='login'){document.body.classList.add('onb');$('#view').innerHTML=banner+vLogin();setStatus('','Sin iniciar sesión');return}
   if(!ready()){$('#view').innerHTML=banner+'<div class="card">'+'<div class="empty"><b>Cargando tus datos…</b><span>Un momento.</span></div></div>';setStatus('','Cargando…');return}
@@ -2047,7 +2128,7 @@ function movRow(v){
   let title,sub,amt;
   if(v.tipo==='transfer'){const d=metodo(v.destino);title=v.nota||(d&&isCred(d)?'Pago de tarjeta':'Transferencia');sub=(m?m.nombre:'Método eliminado')+' → '+(d?d.nombre:'Método eliminado');amt=money(v.monto,c)+(d&&d.moneda!==c?'<small>→ '+money(v.montoDestino,d.moneda)+'</small>':'')}
   else{title=v.nota||v.categoria||'Sin nota';sub=(v.categoria||'')+' · '+(m?m.nombre:'Método eliminado');amt=(v.tipo==='ingreso'?'+':'−')+money(v.monto,c)}
-  return '<button type="button" class="row" data-edit-mov="'+esc(v.id)+'"><div class="ico '+v.tipo+'">'+svg(v.tipo,2.2)+'</div><div class="main"><b>'+esc(title)+'</b><small>'+esc(sub)+' · '+shortDate(v.fecha)+'</small></div><span class="amt '+(v.tipo==='ingreso'?'pos':'')+'">'+amt+'</span></button>';
+  return '<button type="button" class="row" data-edit-mov="'+esc(v.id)+'"><div class="ico '+v.tipo+'">'+svg(v.tipo,2.2)+'</div><div class="main"><b>'+esc(title)+'</b><small>'+esc(sub)+' · '+shortDate(v.fecha)+(horaDe(v)?' · '+esc(fmtHora(horaDe(v))):'')+'</small></div><span class="amt '+(v.tipo==='ingreso'?'pos':'')+'">'+amt+'</span></button>';
 }
 function balLine(m){
   const s=saldo(m);
@@ -2079,7 +2160,11 @@ function vInicio(){
   o+=asistenteCard();
   return o;
 }
-const byDate=(a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.creado||0)-(a.creado||0);
+const horaAhora=()=>{const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+// Hora del movimiento: la registrada, o la de cuando se creó (si fue el mismo día)
+function horaDe(v){if(v.hora&&/^\d{2}:\d{2}$/.test(v.hora))return v.hora;if(v.creado>1e12){const d=new Date(v.creado),f=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');if(f===v.fecha)return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}return ''}
+function fmtHora(h){if(!h)return '';const[H,M]=h.split(':').map(Number);const d=new Date(2000,0,1,H,M);try{return new Intl.DateTimeFormat((typeof I18N!=='undefined'&&I18N.lang==='en')?'en-US':'es-VE',{hour:'numeric',minute:'2-digit'}).format(d)}catch(e){return h}}
+const byDate=(a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||horaDe(b).localeCompare(horaDe(a))||(b.creado||0)-(a.creado||0);
 function vMovs(){
   let o=header('Movimientos','','<div class="month"><button type="button" data-act="prev" aria-label="Mes anterior">‹</button><span>'+monthLabel(month)+'</span><button type="button" data-act="next" aria-label="Mes siguiente">›</button></div><button class="btn primary" type="button" data-act="nuevo-gasto">'+svg('plus',2.4)+'Nuevo</button>');
   if(!metodos.length)return o+welcome();
@@ -2428,7 +2513,7 @@ function abonoForm(d,cuotaId){
       if(!st.fecha){showErr('Elige la fecha.');return}
       const m=metodo(st.metodo);let mov=null;
       if(m){let amt=metAmt();if(amt==='manual'){amt=parseNum(st.montoMet);if(!(amt>0)){showErr('Escribe cuánto fue en '+m.nombre+'.');return}}
-        mov={id:newId(),tipo:deb?'gasto':'ingreso',monto:round2(amt),metodo:m.id,fecha:st.fecha,nota:(deb?'Pago a ':'Cobro de ')+d.titulo,categoria:deb?'Deudas':'Cobros',creado:Date.now()}}
+        mov={id:newId(),tipo:deb?'gasto':'ingreso',monto:round2(amt),metodo:m.id,fecha:st.fecha,nota:(deb?'Pago a ':'Cobro de ')+d.titulo,categoria:deb?'Deudas':'Cobros',hora:st.fecha===today()?horaAhora():'',creado:Date.now()}}
       const ab={id:newId(),fecha:st.fecha,monto:round2(a)};
       if(m)ab.metodo=m.id;if(mov)ab.mov=mov.id;if(cu)ab.cuota=cu.id;
       if(usesBs()&&t>0){ab.tasa=Math.round(t*10000)/10000;ab.montoBs=round2(calc().bs)}
@@ -2528,7 +2613,7 @@ function perfilForm(){
 let lastMet='';
 function movForm(v,preset,resume){
   const isNew=!v;
-  const st=resume||{tipo:v?v.tipo:(preset&&preset.tipo)||'gasto',monto:v?showNum(v.monto):'',metodo:v?v.metodo:(preset&&preset.metodo)||(metodo(lastMet)?lastMet:(metodos[0]||{}).id||''),destino:v?v.destino||'':(preset&&preset.destino)||'',montoDestino:v&&v.montoDestino!=null?showNum(v.montoDestino):'',destTocado:!!(v&&v.montoDestino!=null),categoria:v?v.categoria||'':'',fecha:v?v.fecha:today(),nota:v?v.nota||'':''};
+  const st=resume||{tipo:v?v.tipo:(preset&&preset.tipo)||'gasto',monto:v?showNum(v.monto):'',metodo:v?v.metodo:(preset&&preset.metodo)||(metodo(lastMet)?lastMet:(metodos[0]||{}).id||''),destino:v?v.destino||'':(preset&&preset.destino)||'',montoDestino:v&&v.montoDestino!=null?showNum(v.montoDestino):'',destTocado:!!(v&&v.montoDestino!=null),categoria:v?v.categoria||'':'',fecha:v?v.fecha:today(),hora:v?horaDe(v):horaAhora(),nota:v?v.nota||'':''};
   if(st.tipo==='transfer'&&!st.destino){const d=metodos.find(m=>m.id!==st.metodo);st.destino=d?d.id:''}
   const movEq=()=>{const m=metodo(st.metodo),a=parseNum(st.monto);return m&&m.moneda==='VES'&&tasa()&&a>0?'≈ '+money(a/tasa(),'USD'):''};
   const sh={
@@ -2550,7 +2635,7 @@ function movForm(v,preset,resume){
         b+='<div class="field"><span class="lbl">Categoría <small>(opcional)</small></span><div class="chips">'+catsOf(st.tipo).filter(c=>!(st.tipo==='gasto'&&c==='Deudas'&&st.categoria!=='Deudas')).map(c=>'<button type="button" class="chip" data-cat="'+esc(c)+'" aria-pressed="'+(st.categoria===c)+'">'+esc(c)+'</button>').join('')+(st.nuevaCat==null?'<button type="button" class="chip add" data-newcat="1">+ Nueva categoría</button>':'')+'</div>'+
           (st.nuevaCat!=null?'<div class="newcat"><input class="input" id="vNuevaCat" maxlength="25" autocomplete="off" placeholder="Ej. Seguro, Peluquería" value="'+esc(st.nuevaCat)+'"><button type="button" class="btn sm primary" data-savecat="1">Agregar</button><button type="button" class="btn sm" data-cancelcat="1">Cancelar</button></div>':'')+'</div>';
       }
-      b+='<div class="two"><div class="field"><label class="lbl" for="vFecha">Fecha</label><input class="input" id="vFecha" type="date" value="'+esc(st.fecha)+'"></div><div class="field"><label class="lbl" for="vNota">Nota <small>(opcional)</small></label><input class="input" id="vNota" maxlength="60" autocomplete="off" placeholder="'+(st.tipo==='gasto'?'Ej. supermercado':st.tipo==='ingreso'?'Ej. sueldo':'Ej. retiro de efectivo')+'" value="'+esc(st.nota)+'"></div></div>';
+      b+='<div class="two"><div class="field"><label class="lbl" for="vFecha">Fecha</label><input class="input" id="vFecha" type="date" value="'+esc(st.fecha)+'"></div><div class="field"><label class="lbl" for="vHora">Hora</label><input class="input" id="vHora" type="time" value="'+esc(st.hora||'')+'"></div></div><div class="field"><label class="lbl" for="vNota">Nota <small>(opcional)</small></label><input class="input" id="vNota" maxlength="60" autocomplete="off" placeholder="'+(st.tipo==='gasto'?'Ej. supermercado':st.tipo==='ingreso'?'Ej. sueldo':'Ej. retiro de efectivo')+'" value="'+esc(st.nota)+'"></div>';
       frame(isNew?'Nuevo movimiento':'Editar movimiento',b,footer(isNew?'Guardar':'Guardar cambios',!isNew));
     },
     click(el){
@@ -2578,6 +2663,7 @@ function movForm(v,preset,resume){
       if(el.id==='vMontoD'){st.montoDestino=el.value;st.destTocado=true}
       if(el.id==='vFecha')st.fecha=el.value;
       if(el.id==='vNota')st.nota=el.value;
+      if(el.id==='vHora')st.hora=el.value;
       if(el.id==='vNuevaCat')st.nuevaCat=el.value;
     },
     save(){
@@ -2586,7 +2672,7 @@ function movForm(v,preset,resume){
       if(!(a>0)){showErr('Escribe el monto. Usa solo números, por ejemplo 25 o 25,50.');$('#vMonto')&&$('#vMonto').focus();return}
       const m=metodo(st.metodo);if(!m){showErr(st.tipo==='gasto'?'Elige con qué pagaste.':'Elige dónde lo recibiste.');return}
       if(!st.fecha){showErr('Elige la fecha.');return}
-      const obj={id:isNew?newId():v.id,tipo:st.tipo,monto:round2(a),metodo:m.id,fecha:st.fecha,nota:st.nota.trim(),creado:isNew?Date.now():(v.creado||Date.now())};
+      const obj={id:isNew?newId():v.id,tipo:st.tipo,monto:round2(a),metodo:m.id,fecha:st.fecha,hora:/^\d{2}:\d{2}$/.test(st.hora||'')?st.hora:'',nota:st.nota.trim(),creado:isNew?Date.now():(v.creado||Date.now())};
       if(st.tipo==='transfer'){
         const d=metodo(st.destino);if(!d){showErr('Elige hacia dónde mueves el dinero.');return}
         if(d.id===m.id){showErr('Elige dos métodos distintos.');return}
