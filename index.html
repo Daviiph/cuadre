@@ -983,7 +983,7 @@ function vLegal(){
   '<h2>2. Política de privacidad</h2>'+
   '<h3>Qué datos guardamos</h3><ul><li><b>De tu cuenta:</b> correo y contraseña. La contraseña se guarda cifrada; nadie puede leerla, ni siquiera nosotros.</li><li><b>De tu perfil:</b> nombre, apellido y fecha de nacimiento. Teléfono y país solo si los escribes.</li><li><b>Tus finanzas:</b> lo que registras: métodos de pago, movimientos, deudas, tasas y categorías.</li><li><b>Datos técnicos:</b> fecha de registro, última vez que abriste la app, cuántas veces entraste, el tipo de dispositivo y navegador (por ejemplo “Android · Chrome”) y la dirección IP de la última conexión de cada dispositivo. No guardamos tu ubicación exacta.</li></ul>'+
   '<h3>Para qué los usamos</h3><p>Solo para darte el servicio: guardar tus datos, mostrártelos en todos tus dispositivos, proteger tu cuenta (por ejemplo, detectar accesos desde dispositivos extraños) y saber cuántas personas usan la app. No los vendemos, no los alquilamos y no los usamos para publicidad.</p>'+
-  '<h3>Quién puede verlos</h3><ul><li><b>Tus datos financieros:</b> solo tú. La base de datos tiene reglas que impiden que otra cuenta los lea.</li><li><b>Los administradores de Cuadre</b> (el dueño y las personas que él autorice, como un familiar de confianza o un contador) pueden ver, para llevar control y seguridad de la app: nombre, correo, fecha de registro, última visita, número de visitas, los dispositivos desde los que entras con su dirección IP, el plan y si la cuenta está verificada. No puede ver tus montos, movimientos ni deudas.</li><li><b>Proveedores:</b> Supabase guarda la base de datos y envía los correos (servidores en Londres, Reino Unido). GitHub Pages aloja la página de la app. Ellos procesan los datos solo para prestar ese servicio.</li><li><b>Autoridades:</b> solo si una ley u orden judicial válida lo exige.</li></ul>'+
+  '<h3>Quién puede verlos</h3><ul><li><b>Tus datos financieros:</b> solo tú. La base de datos tiene reglas que impiden que otra cuenta los lea.</li><li><b>Los administradores de Cuadre</b> (el dueño y las personas que él autorice, como un familiar de confianza o un contador) pueden ver, para llevar control y seguridad de la app: nombre, correo, fecha de registro, última visita, número de visitas, el plan y si la cuenta está verificada. Los dispositivos desde los que entras y su dirección IP solo los ve el dueño de Cuadre. No puede ver tus montos, movimientos ni deudas.</li><li><b>Proveedores:</b> Supabase guarda la base de datos y envía los correos (servidores en Londres, Reino Unido). GitHub Pages aloja la página de la app. Ellos procesan los datos solo para prestar ese servicio.</li><li><b>Autoridades:</b> solo si una ley u orden judicial válida lo exige.</li></ul>'+
   '<h3>Cómo los protegemos</h3><p>Conexión cifrada (HTTPS) en todo momento, contraseñas cifradas, verificación de correo, reglas de acceso por usuario en la base de datos y cierre de sesión cuando un acceso vence.</p>'+
   '<h3>Tus derechos</h3><ul><li><b>Ver y corregir</b> tus datos: en Perfil → Editar perfil.</li><li><b>Descargar</b> todos tus datos: Perfil → Descargar mis datos.</li><li><b>Eliminar</b> tu cuenta y todos tus datos de forma permanente: Perfil → Eliminar mi cuenta.</li><li>Para cualquier otra solicitud escribe a '+c+'.</li></ul>'+
   '<h3>Cuánto tiempo los guardamos</h3><p>Mientras tengas tu cuenta. Los dispositivos y sus direcciones IP se borran solos después de 90 días sin uso. Si eliminas tu cuenta, borramos de inmediato tu perfil, tus dispositivos y todos tus datos financieros.</p>'+
@@ -1255,9 +1255,9 @@ const adm={lista:null,off:0,fin:false,cargando:false,err:'',resumen:null,equipo:
 const esAdminNube=()=>mode==='nube'&&nube.admin;
 const PERF_COLS='id,email,nombre,apellido,creado,ultima_vez,visitas,es_admin,es_dueno,verificado,premium_hasta';
 const yo=()=>adm.yo||{};
-function cargarAdmin(){if(!esAdminNube())return;if(!adm.resumen)cargarResumen();if(!adm.lista&&admTab==='personas')cargarPersonas(true);if(!adm.yo)cargarYo();if(!plan.pendientes)cargarPendientes();if(admTab==='equipo'&&!adm.equipo)cargarEquipo();if(admTab==='dispositivos'&&!adm.devs)cargarDevs(true)}
+function cargarAdmin(){if(!esAdminNube())return;if(!adm.resumen)cargarResumen();if(!adm.lista&&admTab==='personas')cargarPersonas(true);if(!adm.yo)cargarYo();if(!plan.pendientes)cargarPendientes();if(admTab==='equipo'&&!adm.equipo)cargarEquipo();if(admTab==='dispositivos'&&!adm.devs&&adm.yo&&adm.yo.es_dueno)cargarDevs(true)}
 function recargarAdmin(silencio){adm.resumen=null;adm.lista=null;adm.equipo=null;adm.devs=null;adm.nombres={};plan.pendientes=null;if(!silencio)render();cargarAdmin()}
-async function cargarYo(){try{const r=await api('/rest/v1/perfiles?select='+PERF_COLS+'&id=eq.'+nube.ses.user.id);adm.yo=(r&&r[0])||{};render()}catch(e){}}
+async function cargarYo(){try{const r=await api('/rest/v1/perfiles?select='+PERF_COLS+'&id=eq.'+nube.ses.user.id);adm.yo=(r&&r[0])||{};if(admTab==='dispositivos'&&adm.yo.es_dueno&&!adm.devs)cargarDevs(true);render()}catch(e){}}
 async function cargarResumen(){
   try{adm.resumen=await nubeRpc('admin_resumen',{})}
   catch(e){adm.resumen={sinFuncion:true}}
@@ -1316,10 +1316,10 @@ function vAdmin(){
   const pend=(adm.resumen&&adm.resumen.pendientes!=null)?adm.resumen.pendientes:(plan.pendientes||[]).length;
   const T=(k,l,n)=>'<button type="button" data-admtab="'+k+'" aria-pressed="'+(admTab===k)+'">'+l+(n?' <span class="num">'+n+'</span>':'')+'</button>';
   let o=header('Administrador','Solo lo ven los administradores de Cuadre','<button class="btn" type="button" id="admRec">Actualizar</button>');
-  o+='<div class="seg adm-tabs" role="group" aria-label="Secciones">'+T('personas','Personas')+T('pagos','Pagos',pend)+T('dispositivos','Dispositivos')+T('cobro','Cobro')+T('equipo','Equipo')+'</div>';
+  o+='<div class="seg adm-tabs" role="group" aria-label="Secciones">'+T('personas','Personas')+T('pagos','Pagos',pend)+(yo().es_dueno?T('dispositivos','Dispositivos'):'')+T('cobro','Cobro')+T('equipo','Equipo')+'</div>';
   if(admTab==='personas')o+=personasCard();
   else if(admTab==='pagos')o+=adminPagosCard();
-  else if(admTab==='dispositivos')o+=devsCard();
+  else if(admTab==='dispositivos')o+=yo().es_dueno?devsCard():(adm.yo?'<div class="card"><p style="margin:0">Esta sección es solo para el dueño de Cuadre.</p></div>':'<div class="card"><p class="muted" style="margin:0">Cargando…</p></div>');
   else if(admTab==='cobro')o+=adminCobroCard();
   else o+=equipoCard();
   return o;
@@ -1357,7 +1357,7 @@ function devsCard(){
 function equipoCard(){
   const admins=adm.equipo;if(!admins)return '<div class="card"><p class="muted" style="margin:0">Cargando…</p></div>';
   const soyDueno=!!yo().es_dueno;
-  let o='<div class="card"><div class="card-h"><div><h2>Equipo administrador</h2><p class="sub">Estas personas pueden abrir la ventana Administrador: ven las personas registradas, sus dispositivos, los pagos y los precios. Nunca ven los gastos ni el dinero de nadie.</p></div></div><div class="adm-list">'+
+  let o='<div class="card"><div class="card-h"><div><h2>Equipo administrador</h2><p class="sub">Estas personas pueden abrir la ventana Administrador: ven las personas registradas, los pagos y los precios. Los dispositivos y las IP solo los ves tú, como dueño. Nadie ve los gastos ni el dinero de los usuarios.</p></div></div><div class="adm-list">'+
     admins.map(x=>{const n=[x.nombre,x.apellido].filter(Boolean).join(' ');return '<div class="adm-row"><div class="avatar sm">'+iniciales(n||x.email)+'</div><div class="adm-main"><b>'+esc(n||'Sin perfil aún')+' <span class="pbadge admin">'+(x.es_dueno?'DUEÑO':'ADMIN')+'</span></b><span>'+esc(x.email||'')+'</span></div>'+(soyDueno&&!x.es_dueno?'<button class="btn sm danger" type="button" data-quitaradm="'+esc(x.email)+'">Quitar</button>':'')+'</div>'}).join('')+'</div></div>';
   if(!soyDueno)return o+'<p class="hint" style="margin:0">Solo el dueño de Cuadre puede agregar o quitar administradores.</p>';
   return o+'<div class="card"><div class="card-h"><div><h2>Agregar administrador</h2><p class="sub">Por ejemplo tu esposa o un contador. Primero esa persona debe crear su cuenta en Cuadre con su correo.</p></div></div>'+
