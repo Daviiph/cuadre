@@ -469,6 +469,28 @@ textarea.input{resize:vertical;min-height:70px;font:inherit}
 .btn.soft.block{margin-top:10px}
 .instalar .inst-tit{display:flex;gap:12px;align-items:center}.instalar .inst-tit img{border-radius:12px;flex:none}
 .instalar .pasos{margin:0}
+.side-foot{margin-top:auto;display:flex;flex-direction:column;gap:10px}
+.side-foot .status{margin-top:0}
+.side-cfg{display:flex;align-items:center;gap:12px;padding:11px 12px;border:0;background:none;border-radius:12px;font-weight:500;color:var(--ink);cursor:pointer;text-align:left}
+.side-cfg:hover{background:var(--soft)}
+.mtop-l{display:flex;align-items:center;gap:8px}
+.mtop-cfg{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer;flex:none}
+.mtop-cfg .i{width:20px;height:20px}
+.aj-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.aj-op{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 10px;border-radius:14px;border:2px solid var(--line);background:var(--surface);color:var(--ink);font-weight:700;cursor:pointer}
+.aj-op[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.aj-flag{font-size:.7rem;padding:2px 6px;border-radius:6px;background:var(--soft);color:var(--ink)}
+.aj-op[aria-pressed="true"] .aj-flag{background:rgba(255,255,255,.25);color:#fff}
+.err-txt{color:var(--neg)}
+.avisos h2{display:flex;align-items:center;gap:8px}
+.av-ico{width:30px;height:30px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}.av-ico .i{width:18px;height:18px}
+.avisos.hay-venc{border:2px solid var(--neg)}.avisos.hay-venc .av-ico{background:var(--neg-soft);color:var(--neg)}
+.av-list{display:flex;flex-direction:column}
+.av-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line)}.av-row:first-child{border-top:0}
+.av-main{display:flex;flex-direction:column;min-width:0}.av-main span{color:var(--muted);font-size:.85rem}
+.av-row.venc .av-main span{color:var(--neg);font-weight:700}.av-row.hoy .av-main span{color:var(--accent);font-weight:700}
+.note.vencida{color:var(--neg)!important;font-weight:700}.note.pronto{color:var(--accent)!important;font-weight:700}
+.notif-card .inst-tit{display:flex;gap:12px;align-items:flex-start}.notif-card .two{margin-top:12px}
 </style>
 
 <div class="app">
@@ -476,9 +498,9 @@ textarea.input{resize:vertical;min-height:70px;font:inherit}
     <div class="brand"><div class="brand-mark"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5.5"/><path d="M8 9.75h8M8 14.25h8"/></svg></div><b>Cuadre</b></div>
     <button class="btn primary block" type="button" data-act="nuevo-gasto"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Registrar gasto</button>
     <nav class="nav" id="nav"></nav>
-    <div class="status"><span class="dot" id="dot"></span><span id="statusTxt">Cargando…</span></div>
+    <div class="side-foot"><button class="side-cfg" type="button" data-ajustes="1"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Configuración</span></button><div class="status"><span class="dot" id="dot"></span><span id="statusTxt">Cargando…</span></div></div>
   </aside>
-  <main><header class="mtop"><div class="brand" aria-label="Cuadre"><div class="brand-mark"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5.5"/><path d="M8 9.75h8M8 14.25h8"/></svg></div><b>Cuadre</b></div><span id="mtopAdm"></span></header><div class="wrap" id="view"></div></main>
+  <main><header class="mtop"><div class="mtop-l"><button class="mtop-cfg" type="button" data-ajustes="1" aria-label="Configuración"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button><div class="brand" aria-label="Cuadre"><div class="brand-mark"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5.5"/><path d="M8 9.75h8M8 14.25h8"/></svg></div><b>Cuadre</b></div></div><span id="mtopAdm"></span></header><div class="wrap" id="view"></div></main>
 </div>
 <nav class="bottombar" id="bottombar" aria-label="Menú"></nav>
 <div class="overlay" id="overlay" hidden></div>
@@ -521,6 +543,7 @@ const P={
   deudas:'<path d="M12 3v18M16.5 7.5c0-1.9-2-3-4.5-3s-4.5 1.1-4.5 3 2 2.6 4.5 3 4.5 1.2 4.5 3.2-2 3-4.5 3-4.5-1.1-4.5-3"/>',
   persona:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
   admin:'<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
+  campana:'<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
   asis:'<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>'
 };
 const svg=(k,w)=>'<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="'+(w||2)+'" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+P[k]+'</svg>';
@@ -1501,6 +1524,285 @@ document.addEventListener('click',e=>{
   if(t.id==='instOcultar'){inst.oculto=true;try{localStorage.setItem('cuadre-instalar-oculto','1')}catch(x){}render();toast('Puedes instalarla cuando quieras desde Perfil')}
   else if(t.id==='instGo'&&inst.evt){const ev=inst.evt;ev.prompt();ev.userChoice.finally(()=>{inst.evt=null;render()})}
 });
+/* ---------- Avisos de pagos y cobros por vencer ---------- */
+// Junta las fechas que el usuario puso: cuotas de créditos y fecha límite de deudas con personas
+function vencimientos(){
+  const dias=+((cfg.ajustes||{}).avisoDias??3),hoy=today(),out=[];
+  deudas.forEach(d=>{
+    if(pendiente(d)<=0.004)return;
+    const deb=d.dir==='debo';
+    if(d.clase==='credito')cuotasPend(d).forEach(c=>{if(!c.fecha)return;const n=daysBetween(hoy,c.fecha);if(n<=dias)out.push({key:d.id+'|'+c.id,d,c,fecha:c.fecha,n,monto:+c.monto||0,deb})});
+    else if(d.limite){const n=daysBetween(hoy,d.limite);if(n<=dias)out.push({key:d.id+'|lim',d,c:null,fecha:d.limite,n,monto:pendiente(d),deb})}
+  });
+  return out.sort((a,b)=>a.n-b.n);
+}
+const cuandoTxt=n=>n<0?'Venció hace '+(-n)+(n===-1?' día':' días'):n===0?'Vence hoy':n===1?'Vence mañana':'Vence en '+n+' días';
+function avisosCard(){
+  if(!ready()||!deudas.length)return '';
+  const v=vencimientos();if(!v.length)return '';
+  const venc=v.filter(x=>x.n<0).length;
+  return '<div class="card avisos'+(venc?' hay-venc':'')+'"><div class="card-h"><div><h2><span class="av-ico" aria-hidden="true">'+svg('campana',2)+'</span>'+(venc?'Tienes pagos vencidos':'Pagos y cobros por vencer')+'</h2><p class="sub">Según las fechas que pusiste en tus deudas.</p></div></div><div class="av-list">'+
+    v.map(x=>'<div class="av-row '+(x.n<0?'venc':x.n===0?'hoy':'')+'"><div class="av-main"><b>'+(x.deb?'Pagar ':'Cobrar ')+esc(money(x.monto,x.d.moneda))+(x.deb?' a ':' a ')+esc(x.d.titulo)+'</b><span>'+esc(cuandoTxt(x.n))+' · '+esc(longDate(x.fecha))+'</span></div>'+
+      (x.c?'<button class="btn sm'+(x.n<=0?' primary':'')+'" type="button" data-pay-cuota="'+esc(x.d.id+'|'+x.c.id)+'">'+(x.deb?'Pagar':'Cobrar')+'</button>':'<button class="btn sm'+(x.n<=0?' primary':'')+'" type="button" data-abono="'+esc(x.d.id)+'">'+(x.deb?'Pagar':'Cobrar')+'</button>')+'</div>').join('')+'</div></div>';
+}
+/* Notificaciones del teléfono o la computadora (al abrir la app, una vez al día por pago) */
+const notifOK=()=>'Notification' in window&&Notification.permission==='granted'&&!!(cfg.ajustes||{}).notificar;
+let _notifHecho='';
+async function revisarNotificaciones(){
+  if(!notifOK()||!ready())return;
+  const hoy=today();if(_notifHecho===hoy)return;_notifHecho=hoy;
+  for(const x of vencimientos()){
+    const k='cuadre-notif:'+x.key+':'+hoy;
+    try{if(localStorage.getItem(k))continue;localStorage.setItem(k,'1')}catch(e){}
+    const titulo=(x.deb?'Te toca pagar ':'Te toca cobrar ')+money(x.monto,x.d.moneda);
+    const cuerpo=(x.deb?'A ':'A ')+x.d.titulo+' · '+cuandoTxt(x.n).toLowerCase();
+    try{
+      let reg=null;try{reg=navigator.serviceWorker?await navigator.serviceWorker.getRegistration():null}catch(e){reg=null}
+      if(reg)await reg.showNotification(titulo,{body:cuerpo,icon:'icon-192.png',badge:'icon-192.png',tag:x.key});
+      else new Notification(titulo,{body:cuerpo,icon:'icon-192.png',tag:x.key});
+    }catch(e){}
+  }
+  try{Object.keys(localStorage).filter(k=>k.startsWith('cuadre-notif:')&&!k.endsWith(hoy)).forEach(k=>localStorage.removeItem(k))}catch(e){}
+}
+/* Pedir permiso de notificaciones al entrar a Deudas (cuentas por cobrar y por pagar) */
+const NOTIF_PREG='cuadre-notif-preguntado';
+function notifPreguntado(){try{return localStorage.getItem(NOTIF_PREG)==='1'}catch(e){return false}}
+function marcarPreguntado(){try{localStorage.setItem(NOTIF_PREG,'1')}catch(e){}}
+function pedirPermisoNotif(){
+  if(!('Notification' in window))return Promise.resolve('no');
+  return Notification.requestPermission().then(p=>{
+    marcarPreguntado();
+    if(p==='granted'){guardarAjustes({notificar:true}).catch(()=>{});_notifHecho='';toast('Listo: te avisaremos cuando toque pagar o cobrar');setTimeout(revisarNotificaciones,500)}
+    render();return p;
+  });
+}
+// Al tocar "Deudas" (es un toque del usuario, así el navegador permite mostrar la pregunta)
+window.addEventListener('click',e=>{
+  const t=e.target.closest&&e.target.closest('[data-nav="deudas"]');if(!t)return;
+  if('Notification' in window&&Notification.permission==='default'&&!notifPreguntado())pedirPermisoNotif();
+},true);
+// Tarjeta en Deudas si todavía no hay permiso (por ejemplo, si la persona dijo "Ahora no" o usa iPhone sin instalar)
+function permisoNotifCard(){
+  if(mode==='cuenta')return '';
+  let oculto=false;try{oculto=localStorage.getItem('cuadre-notif-oculto')==='1'}catch(e){}
+  if(oculto)return '';
+  const hay='Notification' in window;
+  if(hay&&Notification.permission==='granted'){if(!(cfg.ajustes||{}).notificar&&ready()&&tienePerfil())guardarAjustes({notificar:true}).catch(()=>{});return ''}
+  const iosSinInstalar=!hay&&esIOS()&&!enApp();
+  if(!hay&&!iosSinInstalar)return '';
+  const bloq=hay&&Notification.permission==='denied';
+  return '<div class="card notif-card"><div class="card-h"><div class="inst-tit"><span class="av-ico" aria-hidden="true">'+svg('campana',2)+'</span><div><h2>¿Te avisamos cuando toque pagar o cobrar?</h2><p class="sub">'+
+    (iosSinInstalar?'En iPhone, las notificaciones funcionan cuando instalas Cuadre en tu pantalla de inicio. Ve a Perfil → Instala Cuadre, ábrela desde el ícono y vuelve aquí.':
+     bloq?'Las notificaciones están bloqueadas para esta página. Actívalas en los ajustes del navegador (ícono del candado junto a la dirección).':
+     'Te mandamos una notificación cuando se acerque la fecha de una cuota o la fecha límite de una deuda.')+'</p></div></div><button class="x sm" type="button" id="notifOcultar" aria-label="Ocultar">×</button></div>'+
+    (hay&&!bloq?'<div class="two"><button class="btn" type="button" id="notifNo">Ahora no</button><button class="btn primary" type="button" id="notifSi">Activar avisos</button></div>':'')+'</div>';
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest&&e.target.closest('#notifSi,#notifNo,#notifOcultar');if(!t)return;
+  if(t.id==='notifSi')pedirPermisoNotif();
+  else{try{localStorage.setItem('cuadre-notif-oculto','1')}catch(x){}marcarPreguntado();render();toast('Puedes activarlos cuando quieras en Configuración')}
+});
+/* ---------- Configuración: tema, idioma y avisos ---------- */
+const AJ_LS='cuadre-ajustes';
+function ajustesLocal(){try{return JSON.parse(localStorage.getItem(AJ_LS)||'{}')||{}}catch(e){return{}}}
+function ajustes(){return{tema:'auto',idioma:'es',avisoDias:3,notificar:false,...ajustesLocal(),...(cfg.ajustes||{})}}
+function aplicarTema(){
+  const t=ajustes().tema,r=document.documentElement;
+  if(t==='claro')r.setAttribute('data-theme','light');else if(t==='oscuro')r.setAttribute('data-theme','dark');else r.removeAttribute('data-theme');
+  const oscuro=t==='oscuro'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);
+  const m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',oscuro?'#1b1a22':'#7B3FE4');
+}
+function aplicarIdioma(){const l=ajustes().idioma;document.documentElement.lang=l;I18N.lang=l;I18N.todo()}
+async function guardarAjustes(cambios){
+  const nuevo={...ajustes(),...cambios};
+  try{localStorage.setItem(AJ_LS,JSON.stringify(nuevo))}catch(e){}
+  aplicarTema();aplicarIdioma();
+  if(ready()&&tienePerfil())await putCfg({...cfg,ajustes:nuevo});
+}
+const icoEngrane='<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
+function ajustesForm(){
+  const st=ajustes();
+  const opc=(k,v,l,ico)=>'<button type="button" class="aj-op" data-aj="'+k+'" data-v="'+v+'" aria-pressed="'+(String(st[k])===String(v))+'">'+(ico||'')+'<span>'+l+'</span></button>';
+  const sol='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+  const luna='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+  const auto='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>';
+  const soporte='Notification' in window;
+  openSheet({
+    draw(){
+      const s=ajustes();
+      frame('Configuración',
+        '<div class="field"><span class="lbl">Apariencia</span><div class="aj-grid">'+opc('tema','claro','Claro',sol)+opc('tema','oscuro','Oscuro',luna)+opc('tema','auto','Automático',auto)+'</div><span class="hint">Automático usa el mismo modo que tu teléfono o computadora.</span></div>'+
+        '<div class="field"><span class="lbl">Idioma</span><div class="aj-grid">'+opc('idioma','es','Español','<b class="aj-flag">ES</b>')+opc('idioma','en','English','<b class="aj-flag">EN</b>')+'</div></div>'+
+        '<div class="field"><span class="lbl">Avisos de pagos y cobros</span><span class="hint">Te avisamos de las cuotas de tus créditos y de las fechas límite que pusiste en tus deudas.</span>'+
+          '<div class="aj-grid">'+opc('avisoDias','0','El mismo día')+opc('avisoDias','1','1 día antes')+opc('avisoDias','3','3 días antes')+opc('avisoDias','7','1 semana antes')+'</div>'+
+          (soporte?'<label class="check" style="margin-top:6px"><input type="checkbox" id="ajNotif"'+(s.notificar&&Notification.permission==='granted'?' checked':'')+'><span>Recibir notificaciones en este dispositivo'+(Notification.permission==='denied'?' <small class="err-txt">(bloqueadas: actívalas en los ajustes del navegador)</small>':'')+'</span></label>'
+          :'<p class="hint" style="margin:6px 0 0">'+(esIOS()&&!enApp()?'En iPhone, para recibir notificaciones primero instala Cuadre en tu pantalla de inicio (Perfil → Instala Cuadre) y ábrela desde ahí.':'Este navegador no permite notificaciones. Igual verás los avisos en Inicio.')+'</p>')+
+        '</div>'+
+        '<p class="hint" style="margin:0">Tus preferencias se guardan en tu cuenta y se aplican en todos tus dispositivos.</p>',
+        '<div class="r"><button class="btn primary" type="button" data-close>Listo</button></div>');
+    },
+    click(el){
+      const b=el.closest&&el.closest('[data-aj]');if(!b)return;
+      const k=b.dataset.aj,v=k==='avisoDias'?+b.dataset.v:b.dataset.v;
+      guardarAjustes({[k]:v}).catch(e=>toast(errText(e)));this.draw();render();
+    },
+    input(el){
+      if(el.id!=='ajNotif')return;
+      if(el.checked){
+        Notification.requestPermission().then(p=>{
+          if(p==='granted'){guardarAjustes({notificar:true}).catch(()=>{});_notifHecho='';toast('Listo: te avisaremos de tus pagos y cobros');setTimeout(revisarNotificaciones,500)}
+          else{toast('No se dieron permisos para notificaciones');guardarAjustes({notificar:false}).catch(()=>{})}
+          this.draw();
+        });
+      }else{guardarAjustes({notificar:false}).catch(()=>{});this.draw()}
+    },
+    save(){closeSheet()}
+  });
+}
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-ajustes]');if(t){e.preventDefault();ajustesForm()}});
+try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',aplicarTema)}catch(e){}
+
+/* ---------- Traducción de la interfaz ----------
+   La app se escribe en español; si el idioma es otro, se traducen los textos que se ven en pantalla. */
+const I18N={lang:'es',dic:{},reglas:[],
+  t(s){
+    if(this.lang==='es'||!s)return s;
+    const m=s.match(/^(\s*)([\s\S]*?)(\s*)$/),core=m[2];if(!core)return s;
+    let r=this.dic[core];
+    if(r==null){for(const [rx,f] of this.reglas){const mm=core.match(rx);if(mm){const out=f(...mm);if(out!=null&&out!==core){r=out;break}}}}
+    return r==null?s:m[1]+r+m[3];
+  },
+  nodo(n){
+    if(n.nodeType===3){if(n.parentNode&&/^(SCRIPT|STYLE|TEXTAREA)$/.test(n.parentNode.nodeName))return;if(n.__es==null||n.nodeValue!==n.__tr)n.__es=n.nodeValue;const v=this.t(n.__es);n.__tr=v;if(n.nodeValue!==v)n.nodeValue=v;return}
+    if(n.nodeType!==1)return;
+    for(const a of ['placeholder','aria-label','title']){if(n.hasAttribute&&n.hasAttribute(a)){const k='__es_'+a;if(n[k]==null)n[k]=n.getAttribute(a);const v=this.t(n[k]);if(n.getAttribute(a)!==v)n.setAttribute(a,v)}}
+    for(const c of n.childNodes)this.nodo(c);
+  },
+  todo(){this.nodo(document.body);document.title=this.lang==='es'?'Cuadre':'Cuadre'},
+};
+const _obs=new MutationObserver(ms=>{if(I18N.lang==='es')return;for(const m of ms){if(m.type==='childList')m.addedNodes.forEach(n=>I18N.nodo(n));else if(m.type==='characterData'&&m.target.nodeValue!==m.target.__tr){m.target.__es=null;I18N.nodo(m.target)}}});
+try{_obs.observe(document.body,{childList:true,subtree:true,characterData:true})}catch(e){}
+/* ---------- Diccionario inglés ---------- */
+I18N.dic={
+// Navegación y generales
+'Inicio':'Home','Movimientos':'Transactions','Métodos de pago':'Payment methods','Métodos':'Methods','Deudas':'Debts','Perfil':'Profile','Administrador':'Admin','Configuración':'Settings',
+'Registrar gasto':'Add expense','Registrar movimiento':'Add transaction','Guardado en tu cuenta':'Saved to your account','Guardado en este dispositivo':'Saved on this device','Guardado en tu cuenta de Claude':'Saved to your Claude account',
+'Cargando…':'Loading…','Cargando tus datos…':'Loading your data…','Un momento.':'One moment.','Cancelar':'Cancel','Guardar':'Save','Editar':'Edit','Eliminar':'Delete','Cerrar':'Close','Listo':'Done','Quitar':'Remove','Copiar':'Copy','Copiado':'Copied','Actualizar':'Refresh','Ver todos':'See all','Volver':'Back','← Volver':'← Back','Menú':'Menu','Nuevo':'New','Todos':'All','Resumen':'Summary','Falta':'Missing','Desde':'From','Hacia':'To','Fecha':'Date','Nota':'Note','Monto':'Amount','Moneda':'Currency','Categoría':'Category','Descripción':'Description','Estado':'Status','Mañana':'Tomorrow','Hoy':'Today','Ayer':'Yesterday','Ahora':'Now','Nunca':'Never','Vencido':'Overdue','al mes':'per month','al año':'per year',
+// Inicio
+'Dinero disponible':'Available money','Este mes te quedan':'This month you have','de lo que ingresaste':'left from what you earned','Ingreso':'Income','Egreso':'Expense','Ingresos':'Income','Gastos':'Expenses','Últimos movimientos':'Recent transactions','Aún no hay movimientos':'No transactions yet','Ver mis métodos de pago →':'See my payment methods →',
+'Todos tus gastos del mes, incluidos pagos de deudas':'All your expenses this month, including debt payments','Por gasto':'By expense','Por categoría':'By category','Total gastado':'Total spent','Sin gastos este mes':'No expenses this month','Cuando registres gastos verás aquí en qué se va tu dinero.':'Once you add expenses you\'ll see here where your money goes.',
+'Pon la tasa Binance para ver todo junto en dólares.':'Set the Binance rate to see everything in dollars.','Poner tasa del dólar':'Set dollar rate','Sin contar montos en USD.':'Not counting USD amounts.',
+'Agregar mi primer método de pago':'Add my first payment method','Empieza agregando tus métodos de pago':'Start by adding your payment methods','Agrega tu efectivo, tarjetas, cripto o billeteras.':'Add your cash, cards, crypto or wallets.','La app te muestra cuánto tienes en cada uno.':'The app shows how much you have in each.',
+// Asistente
+'Gastos que podrías reducir':'Expenses you could cut','Resumen de tu semana':'Your week in review','Si reduces estos gastos a la mitad, ahorras':'If you cut these expenses in half, you save','Es necesario':'It\'s necessary','Ver menos':'See less','El asistente es parte de Premium.':'The assistant is part of Premium.','Ver Premium':'See Premium',
+'Comida fuera y delivery':'Eating out and delivery','Café, dulces y antojos':'Coffee, sweets and treats','Alcohol, tabaco y salidas':'Alcohol, tobacco and going out','Suscripciones y entretenimiento':'Subscriptions and entertainment','Apuestas y loterías':'Betting and lotteries','Compras por impulso':'Impulse buys','Taxis y viajes en app':'Taxis and ride-hailing',
+'Cocinar en casa algunos días rinde mucho más.':'Cooking at home some days goes a long way.','Son gastos pequeños que juntos suman bastante.':'Small expenses that add up.','Bajar la frecuencia es de lo que más ahorra.':'Doing it less often saves the most.','Revisa cuáles usas de verdad y cancela las demás.':'Check which ones you really use and cancel the rest.','Es dinero que casi nunca vuelve.':'It\'s money that rarely comes back.','Espera 48 horas antes de comprar algo que no planeaste.':'Wait 48 hours before buying something you didn\'t plan.','Cuando puedas, combina con transporte público.':'When you can, combine with public transport.','Ponle un tope semanal y cúmplelo.':'Set a weekly cap and stick to it.','Revisa qué fue distinto esta semana.':'Check what was different this week.','Hazlo la mitad de las veces y ahorras la mitad.':'Do it half as often and save half.','Si casi no lo usas, cancélalo.':'If you barely use it, cancel it.',
+'Algunos gastos en bolívares no se contaron porque falta la tasa del dólar.':'Some bolívar expenses weren\'t counted because the dollar rate is missing.','¡Bien! Esta semana no vemos gastos que valga la pena recortar. Sigue así.':'Nice! No expenses worth cutting this week. Keep it up.','Listo, no lo volveremos a sugerir':'Done, we won\'t suggest it again','Dejar de sugerirlo':'Stop suggesting it',
+// Avisos
+'Pagos y cobros por vencer':'Upcoming payments and collections','Tienes pagos vencidos':'You have overdue payments','Según las fechas que pusiste en tus deudas.':'Based on the dates you set on your debts.','Pagar':'Pay','Cobrar':'Collect','¿Te avisamos cuando toque pagar o cobrar?':'Should we remind you when it\'s time to pay or collect?','Activar avisos':'Turn on reminders','Ahora no':'Not now',
+'Te mandamos una notificación cuando se acerque la fecha de una cuota o la fecha límite de una deuda.':'We\'ll send you a notification when an installment or a debt deadline is coming up.','Puedes activarlos cuando quieras en Configuración':'You can turn them on anytime in Settings','Listo: te avisaremos cuando toque pagar o cobrar':'Done: we\'ll remind you when it\'s time to pay or collect',
+// Configuración
+'Apariencia':'Appearance','Claro':'Light','Oscuro':'Dark','Automático':'Automatic','Automático usa el mismo modo que tu teléfono o computadora.':'Automatic matches your phone or computer.','Idioma':'Language','Avisos de pagos y cobros':'Payment and collection reminders',
+'Te avisamos de las cuotas de tus créditos y de las fechas límite que pusiste en tus deudas.':'We remind you of your loan installments and the deadlines you set on your debts.','El mismo día':'Same day','1 día antes':'1 day before','3 días antes':'3 days before','1 semana antes':'1 week before','Recibir notificaciones en este dispositivo':'Get notifications on this device','(bloqueadas: actívalas en los ajustes del navegador)':'(blocked: turn them on in your browser settings)',
+'Tus preferencias se guardan en tu cuenta y se aplican en todos tus dispositivos.':'Your preferences are saved to your account and apply on all your devices.',
+// Movimientos
+'Nuevo movimiento':'New transaction','Gasto':'Expense','Mover dinero':'Move money','Transferencias':'Transfers','Todos los métodos':'All methods','Filtrar por método':'Filter by method','Mes anterior':'Previous month','Mes siguiente':'Next month','Tipo de movimiento':'Transaction type','No hay movimientos aquí':'No transactions here',
+'Ingresos y gastos':'Income and expenses','Gasto por día':'Spending per day','Gasto del día':'Spending of the day','Gastos del mes':'Expenses this month','Ingresos del mes':'Income this month','Gastos por categoría':'Expenses by category',
+'¿Cuánto?':'How much?','¿Cuánto mueves?':'How much are you moving?','¿Con qué pagaste?':'What did you pay with?','¿Dónde lo recibiste?':'Where did you receive it?','+ Nuevo método':'+ New method','+ Nueva categoría':'+ New category','Las monedas son distintas: escribe el monto exacto que recibiste.':'Different currencies: enter the exact amount you received.','No registrar':'Don\'t record',
+'Ej. supermercado':'E.g. groceries','Ej. sueldo':'E.g. salary','Ej. retiro de efectivo':'E.g. cash withdrawal','Toca una opción para continuar.':'Tap an option to continue.',
+// Categorías
+'Víveres':'Groceries','Gastos fijos':'Fixed costs','Gastos personales':'Personal','Transporte':'Transport','Salud':'Health','Mascotas':'Pets','Ocio':'Leisure','Educación':'Education','Otros':'Other','Salario':'Salary','Ventas':'Sales','Freelance':'Freelance','Regalos':'Gifts',
+// Métodos de pago
+'Agrupados por banco':'Grouped by bank','Agregar método de pago':'Add payment method','Agregar otro método de pago':'Add another payment method','Nuevo método de pago':'New payment method','Guardar método':'Save method','Sin banco':'No bank','Tus bancos:':'Your banks:',
+'Efectivo':'Cash','Tarjeta de débito':'Debit card','Tarjeta de crédito':'Credit card','Criptomoneda':'Crypto','Cuenta bancaria':'Bank account','Billetera digital':'Digital wallet','Otro':'Other',
+'Billetes en mano':'Cash in hand','Sale de tu cuenta':'Comes out of your account','Pagas después':'Pay later','Binance, USDT…':'Binance, USDT…','Zelle, Pago Móvil, PayPal':'Zelle, Pago Móvil, PayPal','Cualquier otro':'Anything else',
+'Dólares (USD)':'US dollars (USD)','Bolívares (Bs)':'Bolívares (Bs)','Euros (€)':'Euros (€)','Pesos colombianos (COP)':'Colombian pesos (COP)','Pesos mexicanos (MXN)':'Mexican pesos (MXN)','Pesos argentinos (ARS)':'Argentine pesos (ARS)','Pesos chilenos (CLP)':'Chilean pesos (CLP)','Soles (PEN)':'Soles (PEN)','Reales (BRL)':'Reais (BRL)','Bitcoin (BTC)':'Bitcoin (BTC)',
+'Si no lo sabes, déjalo vacío. Puedes cambiarlo después.':'If you don\'t know, leave it empty. You can change it later.','Ej. Débito Banesco':'E.g. Banesco debit','Ej. Mercantil, Banesco, Bancamiga':'E.g. Mercantil, Banesco, Bancamiga','Escribe el nombre de tu banco, de cualquier país. La próxima vez te lo sugerimos.':'Type your bank\'s name, from any country. Next time we\'ll suggest it.',
+'Tasas del dólar':'Dollar rates','Tasa Binance':'Binance rate','Tasa BCV':'BCV rate','(la que se usa para convertir)':'(used for conversions)','(opcional, solo de referencia)':'(optional, reference only)','(opcional)':'(optional)','Guardar tasas':'Save rates','Las tasas no cambian tus saldos, solo cómo se muestran.':'Rates don\'t change your balances, only how they\'re shown.',
+'Cuántos bolívares vale 1 dólar en Binance P2P hoy. Con esta tasa la app muestra tus bolívares en dólares.':'How many bolívares 1 dollar is worth on Binance P2P today. The app uses this rate to show your bolívares in dollars.',
+// Deudas
+'Personas y créditos':'People and loans','Me deben':'Owed to me','Debo':'I owe','Yo debo':'I owe','Por cobrar':'To collect','Por pagar':'To pay','Cobros':'Collections','Agregar deuda':'Add debt','Agregar quien me debe':'Add who owes me','Nueva deuda':'New debt','Persona':'Person','Crédito':'Loan','Amigo, familiar o conocido':'Friend, family or acquaintance','Cashea, préstamo, tienda, banco':'Cashea, loan, store, bank',
+'¿Es una persona o un crédito?':'Is it a person or a loan?','Título del crédito':'Loan title','¿Cuánto debes en total?':'How much do you owe in total?','Fechas de pago':'Payment dates','+ Agregar fecha de pago':'+ Add payment date','O créalas todas de una vez, una por mes:':'Or create them all at once, one per month:','Crear pagos mensuales':'Create monthly payments','Divide el monto en partes iguales desde la fecha que elijas.':'Splits the amount evenly from the date you choose.','Nº de pagos':'No. of payments','Número de pagos':'Number of payments','Fecha del primer pago':'First payment date',
+'Ej. Cashea, Préstamo Mercantil':'E.g. Cashea, Mercantil loan','Ej. Nevera en 6 cuotas':'E.g. Fridge in 6 installments','Registrar cobro':'Record collection','Registrar pago':'Record payment','Pendiente:':'Pending:','Avance de tus deudas':'Your debt progress','Pagos programados':'Scheduled payments','Próximos 6 meses, según las fechas de pago de tus créditos':'Next 6 months, based on your loan payment dates',
+'Barra completa = monto total · parte llena = lo ya pagado o cobrado':'Full bar = total amount · filled part = already paid or collected','Pagos programados de los próximos 6 meses':'Scheduled payments for the next 6 months','En divisa':'In foreign currency','En bolívares':'In bolívares','¿En qué moneda se pagó?':'What currency was it paid in?','¿Cuánto te pagaron en divisa?':'How much were you paid in foreign currency?','¿Cuánto pagaste en divisa?':'How much did you pay in foreign currency?','Solo baja la deuda':'Only reduces the debt',
+'¿Hasta cuándo tienes para pagarle?':'When do you have to pay by?','¿Cuándo quedó en pagarte?':'When did they promise to pay you?','Te avisamos cuando se acerque esa fecha.':'We\'ll remind you as that date approaches.','¿Desde cuándo le debes?':'Since when do you owe them?','¿Desde cuándo te debe?':'Since when do they owe you?',
+// Perfil
+'Mi perfil':'My profile','Tus datos personales':'Your personal info','Editar perfil':'Edit profile','Guardar perfil':'Save profile','Datos personales':'Personal info','Nombre':'First name','Apellido':'Last name','Fecha de nacimiento':'Date of birth','Correo electrónico':'Email','Teléfono':'Phone','País':'Country','Usando Cuadre desde':'Using Cuadre since','Mis categorías':'My categories','Aún no has creado categorías propias.':'You haven\'t created any categories yet.',
+'Las que creaste. Se agregan desde “+ Nueva categoría” al registrar un movimiento.':'The ones you created. Add them from “+ New category” when recording a transaction.','Deudas activas':'Active debts','Ej. Venezuela':'E.g. Venezuela',
+'Versión de prueba: tus datos se guardan en tu cuenta de Claude y solo tú los ves. En la versión para tiendas el registro tendrá verificación de correo y contraseña.':'Test version: your data is saved to your Claude account and only you can see it. The store version will have email and password sign-up.',
+'Mi plan':'My plan','Plan Gratis':'Free plan','Hazte Premium':'Go Premium','Renovar':'Renew','Tu cuenta':'Your account','Correo':'Email','Contraseña':'Password','Cuenta verificada':'Verified account','Sin verificar':'Not verified','Crear contraseña':'Create password','Cambiar contraseña':'Change password','Cerrar sesión':'Sign out','Tus datos y privacidad':'Your data and privacy','Tú controlas tu información.':'You control your information.','Descargar mis datos':'Download my data','Términos y privacidad':'Terms and privacy','Cerrar sesión en todos los dispositivos':'Sign out on all devices','Eliminar mi cuenta':'Delete my account',
+'Instala Cuadre en tu teléfono':'Install Cuadre on your phone','Instala Cuadre en tu equipo':'Install Cuadre on your device','Ábrela desde tu pantalla de inicio, a pantalla completa y más rápido.':'Open it from your home screen, full screen and faster.','Instalar':'Install',
+'Abrir':'Open','Personas, pagos, dispositivos, precios y tu equipo, en su propia ventana.':'People, payments, devices, prices and your team, in their own window.',
+// Entrar
+'Entra a Cuadre':'Sign in to Cuadre','Entrar':'Sign in','Crear cuenta':'Create account','Crea tu cuenta':'Create your account','¿Olvidaste tu contraseña?':'Forgot your password?','Entrar sin contraseña':'Sign in without password','Términos y privacidad ':'Terms and privacy','Con tu correo y contraseña. Verás tus mismos datos en tu celular y en tu computadora.':'With your email and password. You\'ll see the same data on your phone and your computer.',
+'Repite la contraseña':'Repeat the password','Mínimo 8 caracteres, con letras y números':'At least 8 characters, with letters and numbers','Gratis. Tus datos son privados: solo tú los ves.':'Free. Your data is private: only you can see it.','Te enviaremos un correo para verificar tu cuenta.':'We\'ll email you to verify your account.','Verifica tu correo':'Verify your email','Revisa tu correo':'Check your email','Crea tu perfil':'Create your profile','Crear mi perfil y empezar':'Create my profile and start',
+};
+// Fechas y textos que cambian
+const _MES={enero:'January',febrero:'February',marzo:'March',abril:'April',mayo:'May',junio:'June',julio:'July',agosto:'August',septiembre:'September',setiembre:'September',octubre:'October',noviembre:'November',diciembre:'December'};
+const _MESC={ene:'Jan',feb:'Feb',mar:'Mar',abr:'Apr',may:'May',jun:'Jun',jul:'Jul',ago:'Aug',sept:'Sep',sep:'Sep',oct:'Oct',nov:'Nov',dic:'Dec'};
+const _DIA={lunes:'Monday',martes:'Tuesday','miércoles':'Wednesday',jueves:'Thursday',viernes:'Friday','sábado':'Saturday',domingo:'Sunday'};
+const _T=s=>I18N.t(s);
+function _fecha(s){
+  let m=s.match(/^(?:(lunes|martes|miércoles|jueves|viernes|sábado|domingo),\s*)?(\d{1,2}) de (\w+)(?: de (\d{4}))?$/i);
+  if(m&&_MES[m[3].toLowerCase()]){const d=m[1]?_DIA[m[1].toLowerCase()]+', ':'';return d+_MES[m[3].toLowerCase()]+' '+m[2]+(m[4]?', '+m[4]:'')}
+  m=s.match(/^(\d{1,2}) (\w+)\.?$/);if(m&&_MESC[m[2].toLowerCase()])return _MESC[m[2].toLowerCase()]+' '+m[1];
+  m=s.match(/^(\w+) (\d{4})$/);if(m&&_MES[m[1].toLowerCase()])return _MES[m[1].toLowerCase()]+' '+m[2];
+  if(_MESC[s.toLowerCase()])return _MESC[s.toLowerCase()];
+  return null;
+}
+const _dias=(n,u)=>n+' '+(n==='1'?u:u+'s');
+I18N.reglas=[
+  [/^(.+ · .+)$/,s=>s.split(' · ').map(_T).join(' · ')],
+  [/^(\d+)\. (.+)$/,(s,n,r)=>n+'. '+_T(r)],
+  [/^(.+)\s*→$/,(s,r)=>_T(r.trim())+' →'],
+  [/^.*$/,s=>{const f=_fecha(s);return f==null?s:f}],
+  [/^Buenos días, (.+)$/,(s,n)=>'Good morning, '+n],[/^Buenas tardes, (.+)$/,(s,n)=>'Good afternoon, '+n],[/^Buenas noches, (.+)$/,(s,n)=>'Good evening, '+n],
+  [/^[Hh]ace (\d+) (min|h)$/,(s,n,u)=>n+(u==='h'?' h':' min')+' ago'],
+  [/^[Hh]ace (\d+) días?$/,(s,n)=>_dias(n,'day')+' ago'],
+  [/^Venció hace (\d+) días?$/,(s,n)=>'Overdue by '+_dias(n,'day')],
+  [/^Vence hoy$/,()=>'Due today'],[/^Vence mañana$/,()=>'Due tomorrow'],[/^Vence en (\d+) días$/,(s,n)=>'Due in '+n+' days'],
+  [/^venció hace (\d+) días?$/,(s,n)=>'overdue by '+_dias(n,'day')],[/^es hoy$/,()=>'it\'s today'],[/^es mañana$/,()=>'it\'s tomorrow'],[/^faltan (\d+) días$/,(s,n)=>n+' days left'],
+  [/^Gastos de (\w+)$/,(s,m)=>'Expenses in '+(_MES[m.toLowerCase()]||m)],
+  [/^(\d+) movimientos?$/,(s,n)=>_dias(n,'transaction')],[/^(\d+) métodos?$/,(s,n)=>_dias(n,'method')],[/^Toca para editar$/,()=>'Tap to edit'],
+  [/^(\d+) de (\d+) pagos hechos$/,(s,a,b)=>a+' of '+b+' payments made'],
+  [/^Pagado (.+) de (.+)$/,(s,a,b)=>'Paid '+a+' of '+b],[/^Cobrado (.+) de (.+)$/,(s,a,b)=>'Collected '+a+' of '+b],[/^Disponible (.+) de (.+)$/,(s,a,b)=>'Available '+a+' of '+b],
+  [/^Debes en tarjetas: (.+)$/,(s,a)=>'Owed on cards: '+a],[/^Debes (.+)$/,(s,a)=>'You owe '+a],[/^Incluye (.+)$/,(s,a)=>'Includes '+a],[/^Promedio (.+)$/,(s,a)=>'Average '+a],[/^Total gastado: (.+)$/,(s,a)=>'Total spent: '+a],
+  [/^Pagar (.+) a (.+)$/,(s,a,b)=>'Pay '+a+' to '+b],[/^Cobrar (.+) a (.+)$/,(s,a,b)=>'Collect '+a+' from '+b],[/^Cobro de (.+)$/,(s,a)=>'Collection from '+a],[/^Pago a (.+)$/,(s,a)=>'Payment to '+a],
+  [/^A tasa Binance (.+)$/,(s,a)=>'At Binance rate '+a],[/^Binance (Bs [\d.,]+)$/,(s,a)=>'Binance '+a],[/^BCV (Bs [\d.,]+)$/,(s,a)=>'BCV '+a],
+  [/^Te debe desde el (.+)$/,(s,a)=>'Owes you since '+(_fecha(a)||a)],[/^Le debes desde el (.+)$/,(s,a)=>'You owe them since '+(_fecha(a)||a)],[/^Quedó en pagarte el (.+)$/,(s,a)=>'Promised to pay you on '+(_fecha(a)||a)],[/^Fecha límite para pagar: (.+)$/,(s,a)=>'Pay by: '+(_fecha(a)||a)],
+  [/^¿Cuánto llega a (.+)\?$/,(s,a)=>'How much arrives in '+a+'?'],[/^¿Cuánto fue en (.+)\?$/,(s,a)=>'How much was it in '+a+'?'],
+  [/^Si lo dejas vacío se llamará “(.+)”\.$/,(s,a)=>'If you leave it empty it will be called “'+_T(a)+'”.'],
+  [/^(\d+) gastos? esta semana$/,(s,n)=>_dias(n,'expense')+' this week'],
+  [/^El asistente revisó tus gastos de los últimos 7 días \((.+)\)\. Solo son sugerencias\.$/,(s,a)=>'The assistant reviewed your expenses from the last 7 days ('+a+'). These are only suggestions.'],
+  [/^El asistente revisó tus gastos de los últimos 7 días\. Solo son sugerencias\.$/,()=>'The assistant reviewed your expenses from the last 7 days. These are only suggestions.'],
+  [/^(.+) al mes$/,(s,a)=>a+' per month'],
+  [/^(\d+) meses hasta (.+)$/,(s,n,a)=>n+' months up to '+(_fecha(a)||a)],[/^sin deudas ni transferencias$/,()=>'excluding debts and transfers'],[/^sin deudas$/,()=>'excluding debts'],
+  [/^Gasto por día de (.+)$/,(s,a)=>'Spending per day in '+(_fecha(a)||a)],[/^Ingresos y gastos de los (\d+) meses hasta (.+)$/,(s,n,a)=>'Income and expenses for the '+n+' months up to '+(_fecha(a)||a)],
+  [/^(\d+) años$/,(s,n)=>n+' years old'],
+  [/^Gasto hormiga: (.+)$/,(s,a)=>'Small recurring expense: '+a],[/^(.+) subió esta semana$/,(s,a)=>_T(a)+' went up this week'],
+  [/^Ver las (\d+) sugerencias$/,(s,n)=>'See all '+n+' suggestions'],
+  [/^Encontramos (\d+) gastos? que podrías reducir$/,(s,n)=>'We found '+_dias(n,'expense')+' you could cut'],
+];
+
+Object.assign(I18N.dic,{
+'¿Qué tipo es?':'What type is it?','¿Cuánto tienes hoy aquí?':'How much do you have here today?','¿Cuánto debes hoy en esta tarjeta?':'How much do you owe on this card today?','Límite de la tarjeta':'Card limit','Banco':'Bank','Dirección':'Direction','Ver gastos':'See expenses','Ver ingresos':'See income',
+'Cuadre Premium':'Cuadre Premium','Más control sobre tu dinero':'More control over your money','Qué incluye':'What\'s included','Función':'Feature','Gratis':'Free','Sin límite':'Unlimited','Ilimitados':'Unlimited','Ilimitadas':'Unlimited','Completo':'Full','Sí':'Yes','No':'No','(próximamente)':'(coming soon)',
+'Registrar gastos e ingresos':'Record expenses and income','Gráficas e historial':'Charts and history','Categorías propias':'Custom categories','Asistente que detecta gastos que puedes reducir':'Assistant that spots expenses you can cut','Recordatorios de cuotas':'Installment reminders','Exportar a Excel o PDF':'Export to Excel or PDF',
+'Si tu Premium vence, nunca pierdes tus datos: los sigues viendo y puedes seguir registrando gastos.':'If your Premium expires, you never lose your data: you can still see it and keep recording expenses.',
+'1. Elige tu plan':'1. Choose your plan','Toca el que prefieras.':'Tap the one you prefer.','Mensual':'Monthly','Anual':'Yearly','2. Elige cómo pagar':'2. Choose how to pay','El precio es en dólares; si pagas en bolívares, usa la tasa del día.':'Prices are in dollars; if you pay in bolívares, use today\'s rate.','3. Reporta tu pago':'3. Report your payment',
+'Número de referencia':'Reference number','Monto pagado':'Amount paid','Enviar reporte de pago':'Send payment report','Verificar mi pago':'Verify my payment','ID de la orden de Binance Pay':'Binance Pay order ID','Mis pagos reportados':'My reported payments','En revisión':'Under review','Aprobado':'Approved','Rechazado':'Rejected','Verificar':'Verify',
+'Plan anual':'Yearly plan','Plan mensual':'Monthly plan','PREMIUM':'PREMIUM','Premium · Administrador':'Premium · Admin','Prueba gratis de Premium':'Free Premium trial','Eres el administrador: tienes Premium siempre.':'You\'re the admin: you always have Premium.',
+'Cuando lo verifiquemos, tu cuenta pasa a Premium. Suele tardar menos de un día.':'Once we verify it, your account becomes Premium. It usually takes less than a day.','Pega el ID de la orden y tu Premium se activa solo.':'Paste the order ID and your Premium activates automatically.',
+'¿Cuánto te pagaron en bolívares?':'How much were you paid in bolívares?','¿Cuánto pagaste en bolívares?':'How much did you pay in bolívares?','Tasa a la que se pagó':'Rate it was paid at','(para el registro en divisa)':'(for the foreign-currency record)','¿Con qué te pagaron?':'What did they pay you with?','¿Con qué pagaste?':'What did you pay with?',
+'Guardar cobro':'Save collection','Guardar pago':'Save payment','Guardar deuda':'Save debt','Guardar movimiento':'Save transaction','Guardar gasto':'Save expense','Guardar ingreso':'Save income',
+'Correo o contraseña incorrectos.':'Wrong email or password.','Escribe tu contraseña.':'Enter your password.','Enviarme el enlace':'Send me the link','Volver a entrar':'Back to sign in','Recupera tu contraseña':'Recover your password',
+'Antes de seguir':'Before you continue','Aceptar y continuar':'Accept and continue','Leer los términos completos':'Read the full terms','Entendido':'Got it',
+});
+I18N.reglas.push(
+  [/^Tu plan: (.+)$/,(s,a)=>'Your plan: '+_T(a)],[/^Activo hasta el (.+)\.$/,(s,a)=>'Active until '+(_fecha(a)||a)+'.'],[/^Te quedan (\d+) días \(hasta el (.+)\)\.$/,(s,n,a)=>n+' days left (until '+(_fecha(a)||a)+').'],
+  [/^Hasta (\d+)$/,(s,n)=>'Up to '+n],[/^Últimos (\d+) meses$/,(s,n)=>'Last '+n+' months'],[/^Ahorras (.+)$/,(s,a)=>'Save '+a],[/^Monto a pagar:$/,()=>'Amount to pay:'],[/^Envía exactamente (.+)$/,(s,a)=>'Send exactly '+a],
+  [/^Plan Gratis$/,()=>'Free plan']
+);
 function dbFail(e){
   const code=e&&e.code||'error';
   if(!ready()){bannerMsg='No se pudo conectar con tu cuenta ('+code+'). Cierra y vuelve a abrir la app.'}
@@ -1566,7 +1868,10 @@ let view='inicio',month=today().slice(0,7),fTipo='todos',fMet='';
 try{const v=localStorage.getItem(LS+':view');if(['inicio','movs','metodos','deudas','perfil'].includes(v))view=v}catch(e){}
 function go(v){if(v==='admin'){if(!esAdminNube())v='inicio';else setTimeout(cargarAdmin,0)}view=v;try{localStorage.setItem(LS+':view',v)}catch(e){}render();window.scrollTo(0,0)}
 
+let _ajKey='';
+function syncAjustes(){const k=JSON.stringify(ajustes());if(k!==_ajKey){_ajKey=k;aplicarTema();aplicarIdioma()}}
 function render(){
+  syncAjustes();
   const navs=[['inicio','Inicio'],['movs','Movimientos'],['metodos','Métodos de pago'],['deudas','Deudas'],['perfil','Perfil']].concat(esAdminNube()?[['admin','Administrador']]:[]);
   $('#nav').innerHTML=navs.map(([k,l])=>'<button type="button" data-nav="'+k+'"'+(view===k?' aria-current="page"':'')+'>'+(k==='perfil'?svg('persona',1.8):svg(k,1.8))+'<span>'+l+'</span></button>').join('');
   const bb=(k,l)=>'<button type="button" data-nav="'+k+'"'+(view===k?' aria-current="page"':'')+'>'+svg(k,1.8)+'<span>'+l+'</span></button>';
@@ -1581,7 +1886,8 @@ function render(){
   document.body.classList.remove('onb');
   const body=({inicio:vInicio,movs:vMovs,metodos:vMetodos,deudas:vDeudas,perfil:vPerfil,premium:vPremium,admin:vAdmin}[view]||vInicio)();
   const _fa=document.activeElement,_fid=_fa&&_fa.id==='admBuscar'?_fa.id:null;
-  $('#view').innerHTML=banner+(view==='inicio'?avisoPlan()+instalarCard(false):'')+body;
+  $('#view').innerHTML=banner+(view==='inicio'?avisosCard()+avisoPlan()+instalarCard(false):view==='deudas'?permisoNotifCard()+avisosCard():'')+body;
+  if(ready())setTimeout(revisarNotificaciones,800);
   if(_fid){const i=document.getElementById(_fid);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
   const[k,t]=statusNow();setStatus(k,t);
 }
@@ -1787,6 +2093,7 @@ function deudaCard(d){
   o+='<div class="bal '+(deb&&!done?'neg':!deb&&!done?'pos':'')+'">'+(done?money(0,d.moneda==='VES'&&tasa()?'USD':d.moneda):dd.main)+'</div>'+(dd.sub&&!done?'<span class="sub2">'+dd.sub+'</span>':'');
   o+='<div class="bar"><i class="good" style="width:'+(pct*100).toFixed(1)+'%"></i></div><span class="note">'+(deb?'Pagado ':'Cobrado ')+dual([[d.moneda,pagado(d)]]).main+' de '+dual([[d.moneda,tot]]).main+'</span>';
   if(per&&d.desde){const n=daysBetween(d.desde,today());o+='<span class="note">'+(deb?'Le debes desde el ':'Te debe desde el ')+esc(longDate(d.desde))+(n>0?' · hace '+n+(n===1?' día':' días'):'')+'</span>'}
+  if(per&&d.limite&&pendiente(d)>0.004){const n=daysBetween(today(),d.limite);o+='<span class="note '+(n<0?'vencida':n<=3?'pronto':'')+'">'+(deb?'Fecha límite para pagar: ':'Quedó en pagarte el ')+esc(longDate(d.limite))+' · '+(n<0?'venció hace '+(-n)+(n===-1?' día':' días'):n===0?'es hoy':n===1?'es mañana':'faltan '+n+' días')+'</span>'}
   const cs=d.cuotas||[];
   if(!per&&cs.length){
     const pend=cuotasPend(d);
@@ -1821,7 +2128,7 @@ function inicioDeudas(){
 
 function deudaForm(d){
   const isNew=!d;
-  const st={dir:d?d.dir:dTab,clase:d?d.clase:'',titulo:d?d.titulo:'',descripcion:d?d.descripcion||'':'',monto:d?showNum(d.monto):'',moneda:d?d.moneda:'USD',desde:d?(d.desde||today()):today(),
+  const st={dir:d?d.dir:dTab,clase:d?d.clase:'',titulo:d?d.titulo:'',descripcion:d?d.descripcion||'':'',monto:d?showNum(d.monto):'',moneda:d?d.moneda:'USD',desde:d?(d.desde||today()):today(),limite:d?(d.limite||''):'',
     cuotas:d?(d.cuotas||[]).map(c=>({...c,monto:c.monto==null?'':showNum(c.monto)})):[],nGen:'',fGen:addMonthsDate(today(),1),quitar:new Set()};
   const eq=()=>{const v=parseNum(st.monto);return st.moneda==='VES'&&tasa()&&v>0?'≈ '+money(v/tasa(),'USD')+' a tasa Binance':''};
   openSheet({
@@ -1835,7 +2142,8 @@ function deudaForm(d){
         b+='<div class="field"><label class="lbl" for="dTitulo">'+(per?'Nombre de la persona':'Título del crédito')+'</label><input class="input" id="dTitulo" maxlength="50" autocomplete="off" placeholder="'+(per?'Ej. Luis Pérez':'Ej. Cashea, Préstamo Mercantil')+'" value="'+esc(st.titulo)+'"></div>';
         if(!per)b+='<div class="field"><label class="lbl" for="dDesc">Descripción <small>(opcional)</small></label><input class="input" id="dDesc" maxlength="80" autocomplete="off" placeholder="Ej. Nevera en 6 cuotas" value="'+esc(st.descripcion)+'"></div>';
         b+='<div class="field"><label class="lbl" for="dMonto">'+(deb?(per?'¿Cuánto le debes?':'¿Cuánto debes en total?'):(per?'¿Cuánto te debe?':'¿Cuánto te deben en total?'))+'</label><div class="two"><div class="amount-wrap"><input class="input amount" id="dMonto" inputmode="decimal" autocomplete="off" placeholder="0" value="'+esc(st.monto)+'"><span class="cur">'+esc(sym(st.moneda))+'</span></div><select class="input" id="dMoneda" aria-label="Moneda">'+MON_DEUDA.map(c=>'<option value="'+c+'"'+(c===st.moneda?' selected':'')+'>'+esc((MONEDAS.find(m=>m[0]===c)||[c,c])[1])+'</option>').join('')+'</select></div><span class="hint" id="dEq">'+eq()+'</span>'+(!isNew&&pagado(d)>0?'<span class="hint">Ya hay '+(deb?'pagos':'cobros')+' por '+money(pagado(d),d.moneda)+'; lo pendiente es este monto menos eso.</span>':'')+'</div>';
-        if(per)b+='<div class="field"><label class="lbl" for="dDesde">'+(deb?'¿Desde cuándo le debes?':'¿Desde cuándo te debe?')+'</label><input class="input" id="dDesde" type="date" value="'+esc(st.desde)+'"></div>';
+        if(per)b+='<div class="field"><label class="lbl" for="dDesde">'+(deb?'¿Desde cuándo le debes?':'¿Desde cuándo te debe?')+'</label><input class="input" id="dDesde" type="date" value="'+esc(st.desde)+'"></div>'+
+          '<div class="field"><label class="lbl" for="dLimite">'+(deb?'¿Hasta cuándo tienes para pagarle?':'¿Cuándo quedó en pagarte?')+' <small>(opcional)</small></label><input class="input" id="dLimite" type="date" value="'+esc(st.limite)+'"><span class="hint">Te avisamos cuando se acerque esa fecha.</span></div>';
         else{
           b+='<div class="field"><span class="lbl">Fechas de pago <small>(opcional)</small></span>'+
             st.cuotas.map((c,i)=>'<div class="cuota"><input class="input" type="date" data-cf="'+i+'" aria-label="Fecha de pago '+(i+1)+'" value="'+esc(c.fecha)+'"><div class="amount-wrap"><input class="input" data-cm="'+i+'" inputmode="decimal" autocomplete="off" aria-label="Monto del pago '+(i+1)+'" placeholder="Monto" value="'+esc(c.monto)+'"><span class="cur">'+esc(sym(st.moneda))+'</span></div><button type="button" class="x sm" data-cdel="'+i+'" aria-label="Quitar esta fecha">×</button>'+(c.pagada?'<span class="st ok">Ya pagada</span>':'')+'</div>').join('')+
@@ -1876,6 +2184,7 @@ function deudaForm(d){
       if(el.id==='dMonto'){st.monto=el.value;const q=$('#dEq');if(q)q.textContent=eq()}
       if(el.id==='dMoneda'&&st.moneda!==el.value){st.moneda=el.value;this.draw()}
       if(el.id==='dDesde')st.desde=el.value;
+      if(el.id==='dLimite')st.limite=el.value;
       if(ds.cf!=null)st.cuotas[+ds.cf].fecha=el.value;
       if(ds.cm!=null)st.cuotas[+ds.cm].monto=el.value;
       if(el.id==='gN')st.nGen=el.value;
@@ -1896,7 +2205,7 @@ function deudaForm(d){
       cuotas.sort((a,b)=>a.fecha.localeCompare(b.fecha));
       const prev=isNew?[]:(d.abonos||[]);
       const removed=prev.filter(a=>st.quitar.has(a.id));
-      const obj={id:isNew?newId():d.id,dir:st.dir,clase:st.clase,titulo,descripcion:st.clase==='credito'?st.descripcion.trim():'',monto:round2(m),moneda:st.moneda,desde:st.clase==='persona'?(st.desde||today()):'',cuotas,abonos:prev.filter(a=>!st.quitar.has(a.id)),creado:isNew?Date.now():(d.creado||Date.now())};
+      const obj={id:isNew?newId():d.id,dir:st.dir,clase:st.clase,titulo,descripcion:st.clase==='credito'?st.descripcion.trim():'',monto:round2(m),moneda:st.moneda,desde:st.clase==='persona'?(st.desde||today()):'',limite:st.clase==='persona'?(st.limite||''):'',cuotas,abonos:prev.filter(a=>!st.quitar.has(a.id)),creado:isNew?Date.now():(d.creado||Date.now())};
       removed.forEach(a=>{if(a.cuota){const c=obj.cuotas.find(x=>x.id===a.cuota);if(c)c.pagada=false}});
       dTab=st.dir;
       busy(async()=>{for(const a of removed)if(a.mov&&movs.some(v=>v.id===a.mov))await del('movs',a.mov);await put('deudas',obj)},isNew?(st.dir==='debo'?'Deuda guardada':'Guardado: '+titulo+' te debe'):'Cambios guardados');
