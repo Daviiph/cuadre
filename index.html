@@ -446,6 +446,23 @@ textarea.input{resize:vertical;min-height:70px;font:inherit}
 .cobro.sel>div{display:flex;flex-direction:column;gap:2px;min-width:0}
 .cobro.sel .btn{grid-column:auto;grid-row:auto}
 .resumen-sel{margin:0;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:10px 12px;border-radius:12px;font-size:.9rem}
+.asis h2{display:flex;align-items:center;gap:8px}
+.asis-ico{width:30px;height:30px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}.asis-ico .i{width:18px;height:18px}
+.asis-total{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--accent);color:var(--accent-ink);padding:14px 16px;border-radius:14px;margin-bottom:12px}
+.asis-total span{font-weight:600;opacity:.9}.asis-total b{font-size:1.35rem;font-weight:800}
+.asis-list{display:flex;flex-direction:column}
+.asis-item{display:flex;gap:12px;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line)}
+.asis-item:first-child{border-top:0}
+.asis-main{display:flex;flex-direction:column;gap:2px;min-width:0}
+.asis-main span{color:var(--muted);font-size:.88rem}
+.asis-main small{color:var(--accent);font-weight:600;font-size:.8rem}
+.asis-side{display:flex;flex-direction:column;align-items:flex-end;text-align:right;flex:none}
+.asis-side b{font-weight:800}.asis-side small{color:var(--muted);font-size:.75rem}
+.asis-side .link{margin-top:6px;font-size:.78rem;color:var(--muted)}
+.asis-lock{display:flex;flex-direction:column;align-items:flex-start;gap:6px;background:var(--soft);padding:14px 16px;border-radius:14px}
+.asis-lock span{color:var(--muted);font-size:.88rem}
+.asis-ok{margin:0;background:var(--pos-soft,var(--soft));color:var(--ink);padding:12px 14px;border-radius:12px}
+.btn.soft.block{margin-top:10px}
 </style>
 
 <div class="app">
@@ -497,7 +514,8 @@ const P={
   transfer:'<path d="M4 8h14l-3-3M20 16H6l3 3"/>',
   deudas:'<path d="M12 3v18M16.5 7.5c0-1.9-2-3-4.5-3s-4.5 1.1-4.5 3 2 2.6 4.5 3 4.5 1.2 4.5 3.2-2 3-4.5 3-4.5-1.1-4.5-3"/>',
   persona:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
-  admin:'<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>'
+  admin:'<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
+  asis:'<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>'
 };
 const svg=(k,w)=>'<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="'+(w||2)+'" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+P[k]+'</svg>';
 const TIPOS=[
@@ -1265,6 +1283,108 @@ document.addEventListener('click',e=>{
   else if(t.dataset.quitaradm)ponerAdmin(t.dataset.quitaradm,false,t);
 });
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='eqCorreo'){e.preventDefault();ponerAdmin(equipo.correo,true)}});
+/* ---------- Asistente: detecta gastos que se podrían reducir (solo sugiere, nunca borra) ---------- */
+const sinTilde=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+// Grupos de gastos prescindibles: palabras que aparecen en la nota o la categoría
+const ASIS_GRUPOS=[
+  {k:'comida',n:'Comida fuera y delivery',c:'Cocinar en casa algunos días rinde mucho más.',p:['delivery','pedidosya','pedidos ya','yummy','rappi','uber eats','comida rapida','hamburguesa','burger','pizza','perro caliente','perros calientes','tequeño','empanada','arepera','restaurant','restaurante','mcdonald','kfc','wendy','sushi','shawarma','pollo frito','pollo en brasa','chino','comida china','almuerzo fuera','cena fuera','food']},
+  {k:'antojos',n:'Café, dulces y antojos',c:'Son gastos pequeños que juntos suman bastante.',p:['cafe','starbucks','cafeteria','helado','dulce','chucheria','golosina','snack','chocolate','refresco','malta','galleta','postre','torta','donas','cotufa']},
+  {k:'alcohol',n:'Alcohol, tabaco y salidas',c:'Bajar la frecuencia es de lo que más ahorra.',p:['cerveza','birra','ron','licor','whisky','vodka','alcohol','caña','bar','discoteca','rumba','fiesta','cigarro','cigarrillo','vape','vaper','tabaco','hookah','licoreria']},
+  {k:'subs',n:'Suscripciones y entretenimiento',c:'Revisa cuáles usas de verdad y cancela las demás.',p:['netflix','spotify','disney','hbo','hbo max','prime video','amazon prime','youtube premium','apple music','icloud','crunchyroll','xbox','playstation','psn','steam','free fire','diamantes','juego','cine','cinex','cines unidos','suscripcion','membresia']},
+  {k:'apuestas',n:'Apuestas y loterías',c:'Es dinero que casi nunca vuelve.',p:['apuesta','parley','casino','loteria','lotto','bet','tragamonedas','animalitos','triple']},
+  {k:'compras',n:'Compras por impulso',c:'Espera 48 horas antes de comprar algo que no planeaste.',p:['shein','temu','aliexpress','amazon','mercado libre','mercadolibre','ropa','zapatos','accesorio','perfume','maquillaje','gadget','audifonos','funda','capricho','antojo']},
+  {k:'taxi',n:'Taxis y viajes en app',c:'Cuando puedas, combina con transporte público.',p:['taxi','uber','ridery','yummy rides','mototaxi','moto taxi','cabify','indrive']},
+];
+// Categorías y palabras que indican un gasto necesario
+const ASIS_NECESARIO_CAT=['Víveres','Gastos fijos','Salud','Educación','Deudas'];
+const ASIS_NECESARIO_P=['mercado','supermercado','viveres','farmacia','medicina','medico','consulta','alquiler','renta','luz','corpoelec','agua','hidro','internet','cantv','gas','condominio','colegio','matricula','universidad','gasolina','cuota','prestamo','seguro'];
+const asis={abierto:false};
+const _rx={};
+function tiene(txt,p){if(p.length>4)return txt.includes(p);const r=_rx[p]||(_rx[p]=new RegExp('(^|[^a-z0-9ñ])'+p.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'s?([^a-z0-9ñ]|$)'));return r.test(txt)}
+function asisIgnorados(){return(cfg.asistente&&Array.isArray(cfg.asistente.ignorar))?cfg.asistente.ignorar:[]}
+function asisUSD(v){const u=toUSD(+v.monto||0,curOfMov(v));return u==null?null:u}
+function asisClave(v){
+  const n=sinTilde(v.nota).replace(/[^a-z0-9ñ ]/g,' ').replace(/\s+/g,' ').trim();
+  if(n)return n.split(' ').slice(0,2).join(' ');
+  return sinTilde(v.categoria||'otros');
+}
+function asisGrupo(v){
+  const txt=' '+sinTilde((v.nota||'')+' '+(v.categoria||''))+' ';
+  if(ASIS_NECESARIO_CAT.includes(v.categoria)&&!ASIS_GRUPOS.some(g=>g.p.some(p=>tiene(txt,p))))return null;
+  if(ASIS_NECESARIO_P.some(p=>tiene(txt,p)))return null;
+  for(const g of ASIS_GRUPOS)if(g.p.some(p=>tiene(txt,p)))return g;
+  if(v.categoria==='Ocio')return{k:'ocio',n:'Ocio',c:'Ponle un tope semanal y cúmplelo.'};
+  return null;
+}
+function analizarGastos(){
+  const hoy=pdate(today()),ms=864e5,dia=f=>Math.floor((hoy-pdate(f))/ms);
+  const ign=asisIgnorados();
+  const g=movs.filter(v=>v.tipo==='gasto'&&v.fecha&&dia(v.fecha)>=0);
+  const sem=g.filter(v=>dia(v.fecha)<7),mes=g.filter(v=>dia(v.fecha)<30),prev=g.filter(v=>dia(v.fecha)>=7&&dia(v.fecha)<35);
+  const sinTasa=sem.some(v=>asisUSD(v)==null);
+  const tot=l=>l.reduce((s,v)=>s+(asisUSD(v)||0),0);
+  const out=[];
+  // 1) Gastos prescindibles de la semana, agrupados
+  const porGrupo={};
+  sem.forEach(v=>{const gr=asisGrupo(v);if(!gr)return;(porGrupo[gr.k]=porGrupo[gr.k]||{g:gr,l:[]}).l.push(v)});
+  Object.values(porGrupo).forEach(({g:gr,l})=>{
+    const t=tot(l);if(t<=0)return;
+    const mensual=gr.k==='subs'?Math.max(t,tot(mes.filter(v=>(asisGrupo(v)||{}).k==='subs'))):t*4.3;
+    out.push({key:'g:'+gr.k,tipo:'prescindible',titulo:gr.n,detalle:l.length+(l.length===1?' gasto':' gastos')+' esta semana · '+[...new Set(l.map(v=>v.nota||v.categoria).filter(Boolean))].slice(0,3).join(', '),consejo:gr.c,semana:t,mensual});
+  });
+  // 2) Gastos hormiga: el mismo gasto 3+ veces en 30 días
+  const rep={};mes.forEach(v=>{const k=asisClave(v);(rep[k]=rep[k]||[]).push(v)});
+  Object.entries(rep).forEach(([k,l])=>{
+    if(l.length<3)return;
+    if(ASIS_NECESARIO_CAT.includes(l[0].categoria)&&!asisGrupo(l[0]))return;
+    const t=tot(l),prom=t/l.length;if(t<=0||prom>25)return;
+    if(out.some(o=>o.key==='g:'+(asisGrupo(l[0])||{}).k))return;
+    out.push({key:'h:'+k,tipo:'hormiga',titulo:'Gasto hormiga: '+(l[0].nota||l[0].categoria||'sin nota'),detalle:'Se repitió '+l.length+' veces en 30 días (~'+money(prom,'USD')+' cada vez)',consejo:'Hazlo la mitad de las veces y ahorras la mitad.',semana:tot(l.filter(v=>dia(v.fecha)<7)),mensual:t});
+  });
+  // 3) Suscripciones: mismo gasto y mismo monto en 2 meses distintos
+  const subs={};g.filter(v=>dia(v.fecha)<75).forEach(v=>{const k=asisClave(v)+'|'+Math.round((+v.monto||0)*100);(subs[k]=subs[k]||new Set()).add(v.fecha.slice(0,7))});
+  Object.entries(subs).forEach(([k,meses])=>{
+    if(meses.size<2)return;const [clave]=k.split('|');const v=g.find(x=>asisClave(x)===clave);if(!v)return;
+    if(ASIS_NECESARIO_CAT.includes(v.categoria)||(asisGrupo(v)||{}).k!=='subs'&&!/suscrip|plan|mensual/.test(sinTilde(v.nota)))return;
+    if(out.some(o=>o.key==='g:subs'))return;
+    out.push({key:'s:'+clave,tipo:'suscripcion',titulo:'Pago mensual: '+(v.nota||v.categoria),detalle:'Lo pagas todos los meses ('+money(asisUSD(v)||0,'USD')+')',consejo:'Si casi no lo usas, cancélalo.',semana:0,mensual:asisUSD(v)||0});
+  });
+  // 4) Categorías que se dispararon frente a una semana normal
+  const catSem={},catPrev={};
+  // solo lo que no se sugirió ya en otro grupo, para no contar dos veces
+  sem.filter(v=>!asisGrupo(v)).forEach(v=>{const c=v.categoria||'Otros';catSem[c]=(catSem[c]||0)+(asisUSD(v)||0)});
+  prev.filter(v=>!asisGrupo(v)).forEach(v=>{const c=v.categoria||'Otros';catPrev[c]=(catPrev[c]||0)+(asisUSD(v)||0)});
+  Object.entries(catSem).forEach(([c,t])=>{
+    if(['Deudas','Salud','Gastos fijos','Educación','Víveres'].includes(c))return;
+    const normal=(catPrev[c]||0)/4;
+    if(normal>1&&t>normal*1.5&&t-normal>5)out.push({key:'c:'+c,tipo:'subio',titulo:c+' subió esta semana',detalle:'Gastaste '+money(t,'USD')+'; una semana normal es ~'+money(normal,'USD')+' (+'+Math.round((t/normal-1)*100)+'%)',consejo:'Revisa qué fue distinto esta semana.',semana:t-normal,mensual:(t-normal)*4.3});
+  });
+  const lista=out.filter(o=>!ign.includes(o.key)).sort((a,b)=>b.mensual-a.mensual);
+  return{lista,semanaTotal:tot(sem),ahorro:lista.reduce((s,o)=>s+(o.tipo==='subio'?o.mensual:o.mensual/2),0),sinTasa,hayDatos:g.length>0};
+}
+function asistenteCard(){
+  const a=analizarGastos();
+  if(!a.hayDatos)return '';
+  const dom=pdate(today()).getDay()===0;
+  let o='<div class="card asis"><div class="card-h"><div><h2><span class="asis-ico" aria-hidden="true">'+svg('asis',2)+'</span>'+(dom?'Resumen de tu semana':'Gastos que podrías reducir')+'</h2><p class="sub">El asistente revisó tus gastos de los últimos 7 días'+(a.semanaTotal>0?' ('+money(a.semanaTotal,'USD')+')':'')+'. Solo son sugerencias.</p></div></div>';
+  if(!esPremium()){
+    return o+'<div class="asis-lock"><b>'+(a.lista.length?'Encontramos '+a.lista.length+(a.lista.length===1?' gasto que podrías reducir':' gastos que podrías reducir'):'El asistente revisa tus gastos cada semana')+'</b><span>El asistente es parte de Premium.</span><button class="btn primary sm" type="button" data-premium="1">Ver Premium</button></div></div>';
+  }
+  if(!a.lista.length)return o+'<p class="asis-ok">¡Bien! Esta semana no vemos gastos que valga la pena recortar. Sigue así.</p></div>';
+  if(a.ahorro>0.5)o+='<div class="asis-total"><span>Si reduces estos gastos a la mitad, ahorras</span><b>'+money(a.ahorro,'USD')+' al mes</b></div>';
+  const lst=asis.abierto?a.lista:a.lista.slice(0,3);
+  o+='<div class="asis-list">'+lst.map(s=>'<div class="asis-item '+s.tipo+'"><div class="asis-main"><b>'+esc(s.titulo)+'</b><span>'+esc(s.detalle)+'</span><small>'+esc(s.consejo)+'</small></div><div class="asis-side">'+(s.mensual>0?'<b>'+money(s.mensual,'USD')+'</b><small>al mes</small>':'')+'<button class="link sm" type="button" data-asisok="'+esc(s.key)+'" title="Dejar de sugerirlo">Es necesario</button></div></div>').join('')+'</div>';
+  if(a.lista.length>3)o+='<button class="btn soft block" type="button" id="asisMas">'+(asis.abierto?'Ver menos':'Ver las '+a.lista.length+' sugerencias')+'</button>';
+  if(a.sinTasa)o+='<p class="hint" style="margin:10px 0 0">Algunos gastos en bolívares no se contaron porque falta la tasa del dólar.</p>';
+  return o+'</div>';
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest&&e.target.closest('[data-asisok],#asisMas');if(!t)return;
+  if(t.id==='asisMas'){asis.abierto=!asis.abierto;render();return}
+  const k=t.dataset.asisok,ign=asisIgnorados();if(ign.includes(k))return;
+  t.disabled=true;
+  putCfg({...cfg,asistente:{...(cfg.asistente||{}),ignorar:[...ign,k].slice(-200)}}).then(()=>toast('Listo, no lo volveremos a sugerir')).catch(err=>{t.disabled=false;toast(errText(err))});
+});
 function dbFail(e){
   const code=e&&e.code||'error';
   if(!ready()){bannerMsg='No se pudo conectar con tu cuenta ('+code+'). Cierra y vuelve a abrir la app.'}
@@ -1387,6 +1507,7 @@ function vInicio(){
   const rec=[...movs].sort(byDate).slice(0,6);
   const recCard='<div class="card"><div class="card-h"><h2>Últimos movimientos</h2>'+(movs.length?'<button class="link" type="button" data-nav="movs">Ver todos</button>':'')+'</div>'+(rec.length?'<div class="list">'+rec.map(movRow).join('')+'</div>':'<div class="empty"><b>Aún no hay movimientos</b><span>Registra tu primer ingreso o egreso con los botones.</span></div>')+'</div>';
   o+='<div class="g2 home">'+inicioCircleCard()+recCard+'</div>';
+  o+=asistenteCard();
   return o;
 }
 const byDate=(a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.creado||0)-(a.creado||0);
