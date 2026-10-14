@@ -498,6 +498,14 @@ textarea.input{resize:vertical;min-height:70px;font:inherit}
 .foto-btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .foto-cam{position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;background:var(--surface);color:var(--accent);border:2px solid var(--accent);display:grid;place-items:center}
 .foto-wrap .link{font-size:.78rem;color:var(--muted)}
+.dia-card .card-h,.rapido-card .card-h{flex-wrap:nowrap;align-items:flex-start}
+.dia-card .inst-tit,.rapido-card .inst-tit{display:flex;gap:12px;align-items:flex-start;min-width:0}
+.dia-card .x{flex:none}
+
+.dia-card .card-h,.rapido-card .card-h{flex-wrap:nowrap;align-items:flex-start}
+.dia-card .inst-tit,.rapido-card .inst-tit{display:flex;gap:12px;align-items:flex-start;min-width:0}
+.dia-card .x{flex:none}
+
 /* Referidos */
 .ref-cod{display:flex;flex-direction:column;align-items:center;gap:4px;margin:14px 0 12px;padding:16px;border-radius:14px;background:var(--accent-soft)}
 .ref-cod .lbl{font-size:.78rem;color:var(--muted);font-weight:600}
@@ -914,6 +922,7 @@ async function cargarNube(primera){
     if(primera){
       api('/auth/v1/user').then(u=>{actualizarUsuario(u);render()}).catch(()=>{});
       cargarPlan();
+      setTimeout(()=>{if('Notification' in window&&Notification.permission==='granted')activarPush()},4000);
       const pf=cfg.perfil||{};
       marcarVisita().then(a=>{nube.admin=a===true;if(pf.nombre)nubeRpc('guardar_perfil',{p_nombre:pf.nombre,p_apellido:pf.apellido||'',p_nacimiento:pf.nacimiento||null}).catch(()=>{});if(nube.admin&&view==='admin')cargarAdmin();render()}).catch(()=>{});
     }
@@ -1830,7 +1839,7 @@ function pedirPermisoNotif(){
   if(!('Notification' in window))return Promise.resolve('no');
   return Notification.requestPermission().then(p=>{
     marcarPreguntado();
-    if(p==='granted'){guardarAjustes({notificar:true}).catch(()=>{});_notifHecho='';toast('Listo: te avisaremos cuando toque pagar o cobrar');setTimeout(revisarNotificaciones,500)}
+    if(p==='granted'){guardarAjustes({notificar:true}).catch(()=>{});setTimeout(activarPush,300);_notifHecho='';toast('Listo: te avisaremos cuando toque pagar o cobrar');setTimeout(revisarNotificaciones,500)}
     render();return p;
   });
 }
@@ -1861,6 +1870,79 @@ document.addEventListener('click',e=>{
   if(t.id==='notifSi')pedirPermisoNotif();
   else{try{localStorage.setItem('cuadre-notif-oculto','1')}catch(x){}marcarPreguntado();render();toast('Puedes activarlos cuando quieras en Configuración')}
 });
+
+/* ---------- Recordatorio diario: registrar ingresos, egresos y deudas del día ---------- */
+// Con la app cerrada llegan como notificación push (el servidor revisa si ya registraste algo hoy).
+// Con la app abierta, en Inicio aparece la tarjeta "Registro del día".
+const HORAS_REC=[[8,'8:00 a. m.'],[12,'12:00 m.'],[18,'6:00 p. m.'],[21,'9:00 p. m.']];
+const horasRec=()=>{const h=ajustes().horasRec;return Array.isArray(h)?h.filter(x=>x>=0&&x<24):[12,21]};
+const recordarOn=()=>ajustes().recordar!==false&&horasRec().length>0;
+const pushPosible=()=>'serviceWorker' in navigator&&'PushManager' in window&&location.protocol==='https:';
+function b64u(s){const p='='.repeat((4-s.length%4)%4);const b=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(b,c=>c.charCodeAt(0))}
+async function activarPush(){
+  if(mode!=='nube'||!nube.ses||sinRed())return false;
+  const permitido='Notification' in window&&Notification.permission==='granted';
+  let sub=null;
+  if(permitido&&pushPosible()){
+    try{
+      const reg=await timeout(navigator.serviceWorker.ready,8000);
+      sub=await reg.pushManager.getSubscription();
+      if(!sub&&recordarOn()){
+        let k='';try{k=localStorage.getItem('cuadre-vapid')||''}catch(e){}
+        if(!k){const r=await sfetch('/functions/v1/recordatorios',{method:'POST',body:JSON.stringify({accion:'clave'})});k=(r&&r.clave)||'';try{if(k)localStorage.setItem('cuadre-vapid',k)}catch(e){}}
+        if(k)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(k)});
+      }
+    }catch(e){sub=null}
+  }
+  const j=sub?sub.toJSON():null;
+  let tz='America/Caracas';try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||tz}catch(e){}
+  try{await nubeRpc('guardar_push',{p_endpoint:j?j.endpoint:null,p_p256dh:j?j.keys.p256dh:null,p_auth:j?j.keys.auth:null,p_tz:tz,p_idioma:ajustes().idioma||'es',p_horas:horasRec(),p_activo:recordarOn()});return !!j}
+  catch(e){return false}
+}
+async function pruebaPush(){
+  const ok=await activarPush();
+  if(!ok){toast(esIOS()&&!enApp()?'En iPhone, instala Cuadre en tu pantalla de inicio para recibir recordatorios.':'Activa las notificaciones de este dispositivo para recibir recordatorios.');return}
+  try{const r=await api('/functions/v1/recordatorios',{method:'POST',body:JSON.stringify({accion:'prueba'})});toast(r&&r.ok?'Te enviamos una notificación de prueba':'No pudimos enviarla. Intenta de nuevo en un momento.')}
+  catch(e){toast('No pudimos enviarla. Intenta de nuevo en un momento.')}
+}
+function recordatorioAjHtml(){
+  const on=recordarOn(),hs=horasRec(),perm='Notification' in window?Notification.permission:'no';
+  let h='<div class="field" id="ajRec"><span class="lbl">Recordatorio diario</span><span class="hint">Te avisamos para que registres tus ingresos, egresos y deudas del día. Al mediodía solo si aún no has anotado nada; en la noche, con el cierre del día.</span>';
+  h+='<label class="check"><input type="checkbox" id="ajRecordar"'+(ajustes().recordar!==false?' checked':'')+'><span>Recordarme registrar mis movimientos</span></label>';
+  if(ajustes().recordar!==false){
+    h+='<div class="aj-grid">'+HORAS_REC.map(([v,l])=>'<button type="button" class="aj-op" data-ajh="'+v+'" aria-pressed="'+hs.includes(v)+'"><span>'+l+'</span></button>').join('')+'</div>';
+    if(mode==='nube'){
+      if(esIOS()&&!enApp())h+='<p class="hint" style="margin:6px 0 0">En iPhone, los recordatorios llegan cuando instalas Cuadre en tu pantalla de inicio (Perfil → Instala Cuadre) y permites las notificaciones.</p>';
+      else if(perm!=='granted')h+='<p class="hint" style="margin:6px 0 0">Activa “Recibir notificaciones en este dispositivo” para que te lleguen aunque la app esté cerrada.</p>';
+      else if(on)h+='<button class="btn sm" type="button" id="ajPrueba" style="margin-top:8px;align-self:flex-start">Enviar notificación de prueba</button>';
+    }
+  }
+  return h+'</div>';
+}
+function recordatorioClick(el,sh){
+  const b=el.closest&&el.closest('[data-ajh],#ajPrueba');if(!b)return false;
+  if(b.id==='ajPrueba'){pruebaPush();return true}
+  const v=+b.dataset.ajh,hs=horasRec();const n=hs.includes(v)?hs.filter(x=>x!==v):[...hs,v].sort((a,c)=>a-c);
+  guardarAjustes(n.length?{horasRec:n}:{horasRec:n,recordar:false}).then(()=>activarPush()).catch(()=>{});sh.draw();
+  return true;
+}
+function recordatorioInput(el,sh){
+  if(el.id!=='ajRecordar')return false;
+  guardarAjustes(el.checked?{recordar:true,horasRec:horasRec().length?horasRec():[12,21]}:{recordar:false}).then(()=>activarPush()).catch(()=>{});sh.draw();
+  return true;
+}
+// Tarjeta en Inicio (desde el mediodía, si hoy todavía no hay movimientos)
+function registroDiaCard(){
+  if(!ready()||!metodos.length||!recordarOn())return '';
+  const hoy=today(),h=new Date().getHours();
+  const primera=Math.min(...horasRec());if(h<primera)return '';
+  let oculto='';try{oculto=localStorage.getItem('cuadre-dia-oculto')||''}catch(e){}
+  if(oculto===hoy)return '';
+  if(movs.some(v=>v.fecha===hoy)||deudas.some(d=>(d.abonos||[]).some(a=>a.fecha===hoy)))return '';
+  const noche=h>=18;
+  return '<div class="card dia-card"><div class="card-h"><div class="inst-tit"><span class="av-ico" aria-hidden="true">'+svg('campana',2)+'</span><div><h2>'+(noche?'Cierre del día':'¿Ya registraste lo de hoy?')+'</h2><p class="sub">'+(noche?'Hoy no registraste ingresos, egresos ni movimientos de deudas. Si hubo alguno, anótalo ahora para mantener tus cuentas al día.':'Todavía no tienes movimientos de hoy. Anótalos ahora y mantén tus cuentas al día.')+'</p></div></div><button class="x sm" type="button" id="diaOcultar" aria-label="Ocultar por hoy">×</button></div>'+KPI_ACTS.replace('class="kpi-actions"','class="kpi-actions" style="margin-top:4px"')+'</div>';
+}
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('#diaOcultar');if(!t)return;try{localStorage.setItem('cuadre-dia-oculto',today())}catch(x){}render()});
 /* ---------- Configuración: tema, idioma y avisos ---------- */
 const AJ_LS='cuadre-ajustes';
 function ajustesLocal(){try{return JSON.parse(localStorage.getItem(AJ_LS)||'{}')||{}}catch(e){return{}}}
@@ -1968,22 +2050,25 @@ function ajustesForm(){
           (soporte?'<label class="check" style="margin-top:6px"><input type="checkbox" id="ajNotif"'+(s.notificar&&Notification.permission==='granted'?' checked':'')+'><span>Recibir notificaciones en este dispositivo'+(Notification.permission==='denied'?' <small class="err-txt">(bloqueadas: actívalas en los ajustes del navegador)</small>':'')+'</span></label>'
           :'<p class="hint" style="margin:6px 0 0">'+(esIOS()&&!enApp()?'En iPhone, para recibir notificaciones primero instala Cuadre en tu pantalla de inicio (Perfil → Instala Cuadre) y ábrela desde ahí.':'Este navegador no permite notificaciones. Igual verás los avisos en Inicio.')+'</p>')+
         '</div>'+
+        recordatorioAjHtml()+
         (tienePerfil()?catsAjHtml():'')+
         '<p class="hint" style="margin:0">Tus preferencias se guardan en tu cuenta y se aplican en todos tus dispositivos.</p>',
         '<div class="r"><button class="btn primary" type="button" data-close>Listo</button></div>');
     },
     click(el){
       if(catsAjClick(el,this))return;
+      if(recordatorioClick(el,this))return;
       const b=el.closest&&el.closest('[data-aj]');if(!b)return;
       const k=b.dataset.aj,v=k==='avisoDias'?+b.dataset.v:b.dataset.v;
       guardarAjustes({[k]:v}).catch(e=>toast(errText(e)));this.draw();render();
     },
     input(el){
       if(catsAjInput(el))return;
+      if(recordatorioInput(el,this))return;
       if(el.id!=='ajNotif')return;
       if(el.checked){
         Notification.requestPermission().then(p=>{
-          if(p==='granted'){guardarAjustes({notificar:true}).catch(()=>{});_notifHecho='';toast('Listo: te avisaremos de tus pagos y cobros');setTimeout(revisarNotificaciones,500)}
+          if(p==='granted'){guardarAjustes({notificar:true}).catch(()=>{});setTimeout(activarPush,300);_notifHecho='';toast('Listo: te avisaremos de tus pagos y cobros');setTimeout(revisarNotificaciones,500)}
           else{toast('No se dieron permisos para notificaciones');guardarAjustes({notificar:false}).catch(()=>{})}
           this.draw();
         });
@@ -2018,7 +2103,7 @@ try{_obs.observe(document.body,{childList:true,subtree:true,characterData:true})
 /* ---------- Diccionario inglés ---------- */
 I18N.dic={
 // Navegación y generales
-'Inicio':'Home','Miembro Premium':'Premium member','Hora':'Time','Invita y gana Premium':'Invite and earn Premium','Tu código':'Your code','Compartir invitación':'Share invite','Copiar código':'Copy code','Código copiado':'Code copied','Invitación copiada: pégala en WhatsApp o donde quieras':'Invite copied: paste it in WhatsApp or anywhere','amigo invitado':'friend invited','amigos invitados':'friends invited','pagaron Premium':'paid Premium','pagó Premium':'paid Premium','semana ganada':'week earned','semanas ganadas':'weeks earned','Pagó Premium · +2 semanas':'Paid Premium · +2 weeks','Registrado · +1 semana':'Signed up · +1 week','Aún no has invitado a nadie. Comparte tu código y empieza a ganar semanas.':'You haven\'t invited anyone yet. Share your code and start earning weeks.','¿Te invitó alguien? Escribe su código':'Did someone invite you? Enter their code','Usar código':'Use code','Así le regalas una semana de Premium a quien te invitó.':'This gives the person who invited you a week of Premium.','Premium por referidos':'Premium from referrals','Tu Premium por referidos vence':'Your referral Premium expires','Escribe el código de quien te invitó.':'Enter the code of the person who invited you.','Ese código no existe. Revísalo con quien te invitó.':'That code doesn\'t exist. Check it with whoever invited you.','Ese es tu propio código: compártelo con tus amigos.':'That\'s your own code: share it with your friends.','Ya usaste un código de referido.':'You already used a referral code.','El código de quien te invitó solo se puede usar en las 2 primeras semanas de tu cuenta.':'A referral code can only be used in your account\'s first 2 weeks.','No puedes usar el código de alguien que tú invitaste.':'You can\'t use the code of someone you invited.','Ese código es de otra cuenta abierta en este mismo equipo.':'That code belongs to another account on this same device.','No se pudo usar ese código.':'That code couldn\'t be used.','Cuadre Rápido':'Cuadre Quick','Total restante':'Remaining total','Ingresos del mes':'Income this month','Egresos del mes':'Expenses this month','Abrir Cuadre completo →':'Open full Cuadre →','Abrir Cuadre Rápido':'Open Cuadre Quick','Copiar enlace':'Copy link','Ver Cuadre Rápido':'View Cuadre Quick','Enlace copiado':'Link copied','Primero agrega un método de pago':'Add a payment method first','Un acceso directo en tu pantalla de inicio: al tocarlo ves al instante ingresos, egresos y tu total restante, y registras con un toque. Sin entrar a toda la app.':'A shortcut on your home screen: tap it to instantly see income, expenses and your remaining total, and record with one tap. No need to open the whole app.','En Android también puedes mantener presionado el ícono de Cuadre para ver atajos: Registrar gasto, Registrar ingreso y Cuadre Rápido.':'On Android you can also press and hold the Cuadre icon for shortcuts: Add expense, Add income and Cuadre Quick.','Modo sin conexión':'Offline mode','Sin internet.':'No internet.','Listo: se subió a la nube el cambio que hiciste sin internet':'Done: the change you made offline was uploaded','Puedes seguir usando Cuadre normalmente.':'You can keep using Cuadre as usual.','Lo que registres se guarda en este equipo y se sube solo a tu cuenta cuando vuelva la conexión.':'Whatever you add is saved on this device and uploads to your account automatically when you\'re back online.','Sin internet · usando lo guardado aquí':'Offline · using data saved here','Mis categorías':'My categories','Crea tus propias categorías. Toca una para cambiarle el nombre.':'Create your own categories. Tap one to rename it.','Gastos':'Expenses','Ingresos':'Income','Agregar':'Add','Ej. Seguro, Peluquería':'e.g. Insurance, Haircut','Ej. Alquiler, Comisiones':'e.g. Rent, Commissions','Aún no tienes categorías propias de gastos.':'You have no custom expense categories yet.','Aún no tienes categorías propias de ingresos.':'You have no custom income categories yet.','Cambiar nombre':'Rename','Escribe el nombre de la categoría.':'Type the category name.','Membresía activa':'Active membership','Bienvenido a Cuadre Premium':'Welcome to Cuadre Premium','Gracias por apoyar a Cuadre. Ya tienes todas las funciones, sin límites.':'Thanks for supporting Cuadre. You now have every feature, with no limits.','Movimientos':'Transactions','Métodos de pago':'Payment methods','Métodos':'Methods','Deudas':'Debts','Perfil':'Profile','Administrador':'Admin','Configuración':'Settings',
+'Inicio':'Home','Miembro Premium':'Premium member','Hora':'Time','Recordatorio diario':'Daily reminder','Te avisamos para que registres tus ingresos, egresos y deudas del día. Al mediodía solo si aún no has anotado nada; en la noche, con el cierre del día.':'We remind you to record the day\'s income, expenses and debts. At noon only if you haven\'t logged anything yet; at night, with an end-of-day check.','Recordarme registrar mis movimientos':'Remind me to record my transactions','8:00 a. m.':'8:00 AM','12:00 m.':'12:00 PM','6:00 p. m.':'6:00 PM','9:00 p. m.':'9:00 PM','Enviar notificación de prueba':'Send test notification','Te enviamos una notificación de prueba':'We sent you a test notification','No pudimos enviarla. Intenta de nuevo en un momento.':'We couldn\'t send it. Try again in a moment.','En iPhone, instala Cuadre en tu pantalla de inicio para recibir recordatorios.':'On iPhone, install Cuadre on your home screen to get reminders.','Activa las notificaciones de este dispositivo para recibir recordatorios.':'Turn on notifications on this device to get reminders.','En iPhone, los recordatorios llegan cuando instalas Cuadre en tu pantalla de inicio (Perfil → Instala Cuadre) y permites las notificaciones.':'On iPhone, reminders arrive once you install Cuadre on your home screen (Profile → Install Cuadre) and allow notifications.','Activa “Recibir notificaciones en este dispositivo” para que te lleguen aunque la app esté cerrada.':'Turn on “Receive notifications on this device” so they arrive even when the app is closed.','Cierre del día':'End of day','¿Ya registraste lo de hoy?':'Did you log today\'s activity?','Hoy no registraste ingresos, egresos ni movimientos de deudas. Si hubo alguno, anótalo ahora para mantener tus cuentas al día.':'You didn\'t record any income, expenses or debt payments today. If there were any, add them now to keep your accounts up to date.','Todavía no tienes movimientos de hoy. Anótalos ahora y mantén tus cuentas al día.':'You have no transactions today yet. Add them now and keep your accounts up to date.','Ocultar por hoy':'Hide for today','Invita y gana Premium':'Invite and earn Premium','Tu código':'Your code','Compartir invitación':'Share invite','Copiar código':'Copy code','Código copiado':'Code copied','Invitación copiada: pégala en WhatsApp o donde quieras':'Invite copied: paste it in WhatsApp or anywhere','amigo invitado':'friend invited','amigos invitados':'friends invited','pagaron Premium':'paid Premium','pagó Premium':'paid Premium','semana ganada':'week earned','semanas ganadas':'weeks earned','Pagó Premium · +2 semanas':'Paid Premium · +2 weeks','Registrado · +1 semana':'Signed up · +1 week','Aún no has invitado a nadie. Comparte tu código y empieza a ganar semanas.':'You haven\'t invited anyone yet. Share your code and start earning weeks.','¿Te invitó alguien? Escribe su código':'Did someone invite you? Enter their code','Usar código':'Use code','Así le regalas una semana de Premium a quien te invitó.':'This gives the person who invited you a week of Premium.','Premium por referidos':'Premium from referrals','Tu Premium por referidos vence':'Your referral Premium expires','Escribe el código de quien te invitó.':'Enter the code of the person who invited you.','Ese código no existe. Revísalo con quien te invitó.':'That code doesn\'t exist. Check it with whoever invited you.','Ese es tu propio código: compártelo con tus amigos.':'That\'s your own code: share it with your friends.','Ya usaste un código de referido.':'You already used a referral code.','El código de quien te invitó solo se puede usar en las 2 primeras semanas de tu cuenta.':'A referral code can only be used in your account\'s first 2 weeks.','No puedes usar el código de alguien que tú invitaste.':'You can\'t use the code of someone you invited.','Ese código es de otra cuenta abierta en este mismo equipo.':'That code belongs to another account on this same device.','No se pudo usar ese código.':'That code couldn\'t be used.','Cuadre Rápido':'Cuadre Quick','Total restante':'Remaining total','Ingresos del mes':'Income this month','Egresos del mes':'Expenses this month','Abrir Cuadre completo →':'Open full Cuadre →','Abrir Cuadre Rápido':'Open Cuadre Quick','Copiar enlace':'Copy link','Ver Cuadre Rápido':'View Cuadre Quick','Enlace copiado':'Link copied','Primero agrega un método de pago':'Add a payment method first','Un acceso directo en tu pantalla de inicio: al tocarlo ves al instante ingresos, egresos y tu total restante, y registras con un toque. Sin entrar a toda la app.':'A shortcut on your home screen: tap it to instantly see income, expenses and your remaining total, and record with one tap. No need to open the whole app.','En Android también puedes mantener presionado el ícono de Cuadre para ver atajos: Registrar gasto, Registrar ingreso y Cuadre Rápido.':'On Android you can also press and hold the Cuadre icon for shortcuts: Add expense, Add income and Cuadre Quick.','Modo sin conexión':'Offline mode','Sin internet.':'No internet.','Listo: se subió a la nube el cambio que hiciste sin internet':'Done: the change you made offline was uploaded','Puedes seguir usando Cuadre normalmente.':'You can keep using Cuadre as usual.','Lo que registres se guarda en este equipo y se sube solo a tu cuenta cuando vuelva la conexión.':'Whatever you add is saved on this device and uploads to your account automatically when you\'re back online.','Sin internet · usando lo guardado aquí':'Offline · using data saved here','Mis categorías':'My categories','Crea tus propias categorías. Toca una para cambiarle el nombre.':'Create your own categories. Tap one to rename it.','Gastos':'Expenses','Ingresos':'Income','Agregar':'Add','Ej. Seguro, Peluquería':'e.g. Insurance, Haircut','Ej. Alquiler, Comisiones':'e.g. Rent, Commissions','Aún no tienes categorías propias de gastos.':'You have no custom expense categories yet.','Aún no tienes categorías propias de ingresos.':'You have no custom income categories yet.','Cambiar nombre':'Rename','Escribe el nombre de la categoría.':'Type the category name.','Membresía activa':'Active membership','Bienvenido a Cuadre Premium':'Welcome to Cuadre Premium','Gracias por apoyar a Cuadre. Ya tienes todas las funciones, sin límites.':'Thanks for supporting Cuadre. You now have every feature, with no limits.','Movimientos':'Transactions','Métodos de pago':'Payment methods','Métodos':'Methods','Deudas':'Debts','Perfil':'Profile','Administrador':'Admin','Configuración':'Settings',
 'Registrar gasto':'Add expense','Registrar movimiento':'Add transaction','Guardado en tu cuenta':'Saved to your account','Guardado en este dispositivo':'Saved on this device','Guardado en tu cuenta de Claude':'Saved to your Claude account',
 'Cargando…':'Loading…','Cargando tus datos…':'Loading your data…','Un momento.':'One moment.','Cancelar':'Cancel','Guardar':'Save','Editar':'Edit','Eliminar':'Delete','Cerrar':'Close','Listo':'Done','Quitar':'Remove','Copiar':'Copy','Copiado':'Copied','Actualizar':'Refresh','Ver todos':'See all','Volver':'Back','← Volver':'← Back','Menú':'Menu','Nuevo':'New','Todos':'All','Resumen':'Summary','Falta':'Missing','Desde':'From','Hacia':'To','Fecha':'Date','Nota':'Note','Monto':'Amount','Moneda':'Currency','Categoría':'Category','Descripción':'Description','Estado':'Status','Mañana':'Tomorrow','Hoy':'Today','Ayer':'Yesterday','Ahora':'Now','Nunca':'Never','Vencido':'Overdue','al mes':'per month','al año':'per year',
 // Inicio
@@ -2261,7 +2346,7 @@ function render(){
   document.body.classList.toggle('modo-rapido',view==='rapido');revisarAccion();
   const body=({rapido:vRapido,inicio:vInicio,movs:vMovs,metodos:vMetodos,deudas:vDeudas,perfil:vPerfil,premium:vPremium,admin:vAdmin}[view]||vInicio)();
   const _fa=document.activeElement,_fid=_fa&&_fa.id==='admBuscar'?_fa.id:null;
-  $('#view').innerHTML=banner+(view==='inicio'?bienvenidaPremium()+avisosCard()+avisoPlan()+instalarCard(false):view==='deudas'?permisoNotifCard()+avisosCard():'')+body;
+  $('#view').innerHTML=banner+(view==='inicio'?bienvenidaPremium()+registroDiaCard()+avisosCard()+avisoPlan()+instalarCard(false):view==='deudas'?permisoNotifCard()+avisosCard():'')+body;
   if(ready())setTimeout(revisarNotificaciones,800);
   if(_fid){const i=document.getElementById(_fid);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
   const[k,t]=statusNow();setStatus(k,t);
