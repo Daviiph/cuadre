@@ -522,6 +522,64 @@ textarea.input{resize:vertical;min-height:70px;font:inherit}
 .foto-btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .foto-cam{position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;background:var(--surface);color:var(--accent);border:2px solid var(--accent);display:grid;place-items:center}
 .foto-wrap .link{font-size:.78rem;color:var(--muted)}
+/* Pantalla de voz */
+#vozPan{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;gap:14px;padding:calc(18px + env(safe-area-inset-top,0px)) 20px calc(22px + env(safe-area-inset-bottom,0px));overflow-y:auto;
+  background:radial-gradient(120% 70% at 50% 0%,#FFFFFF 0%,#F1ECFF 45%,#E6DEFF 100%);color:#1B1530;animation:vzIn .45s cubic-bezier(.16,1,.3,1) both}
+#vozPan.sale{animation:vzOut .28s ease both}
+#vozPan[hidden]{display:none}
+@keyframes vzIn{from{opacity:0;transform:scale(1.04)}to{opacity:1;transform:none}}@keyframes vzOut{to{opacity:0;transform:scale(.98)}}
+:root[data-theme="dark"] #vozPan{background:radial-gradient(120% 70% at 50% 0%,#2B2142 0%,#16111F 60%,#0F0B16 100%);color:#F1ECFF}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #vozPan{background:radial-gradient(120% 70% at 50% 0%,#2B2142 0%,#16111F 60%,#0F0B16 100%);color:#F1ECFF}}
+.vz-top{min-height:24px}.vz-est{display:inline-flex;align-items:center;gap:8px;font-size:.88rem;font-weight:600;opacity:.75}
+.vz-dot{width:7px;height:7px;border-radius:50%;background:#7B3FE4;animation:vzDot 1s ease-in-out infinite}@keyframes vzDot{50%{opacity:.25}}
+.vz-orbe{position:relative;width:230px;height:230px;display:grid;place-items:center;flex:none;margin-top:8px}
+.vz-bola{width:150px;height:150px;border-radius:50%;background:conic-gradient(from 0deg,#7B3FE4,#60A5FA,#C4B5FD,#F0ABFC,#7B3FE4);filter:blur(1px) saturate(1.1);box-shadow:inset 0 0 40px rgba(255,255,255,.65),0 20px 60px rgba(123,63,228,.35);animation:vzGira 9s linear infinite,vzRes 4s ease-in-out infinite}
+.vz-bola::after{content:"";position:absolute}
+#vozPan.oye .vz-bola{animation:vzGira 3.5s linear infinite,vzHabla 1.1s ease-in-out infinite}
+@keyframes vzGira{to{rotate:360deg}}@keyframes vzRes{50%{transform:scale(1.04)}}@keyframes vzHabla{0%,100%{transform:scale(1)}30%{transform:scale(1.09)}60%{transform:scale(.97)}}
+.vz-ticks{position:absolute;inset:0;opacity:0;transition:opacity .4s}
+#vozPan.oye .vz-ticks{opacity:1}
+.vz-ticks i{position:absolute;left:50%;top:50%;width:2px;height:12px;margin:-6px 0 0 -1px;border-radius:2px;background:#8B5CF6;transform-origin:center;animation:vzTick 1.1s ease-in-out infinite}
+@keyframes vzTick{0%,100%{opacity:.25;height:6px}50%{opacity:.9;height:16px}}
+.vz-txt{max-width:520px;text-align:center;font-size:1.35rem;font-weight:600;line-height:1.35;min-height:2.7em}
+.vz-txt span{display:inline-block;animation:vzPal .45s cubic-bezier(.16,1,.3,1) both}.vz-txt .vz-ph{opacity:.45;font-weight:500;font-size:1.05rem}
+@keyframes vzPal{from{opacity:0;transform:translateY(6px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+.vz-err{margin:0;color:#C2362F;font-size:.88rem;text-align:center;max-width:420px}
+.vz-res{width:min(420px,100%);animation:vzPal .4s both}.vz-res .voz-res{background:rgba(255,255,255,.65);backdrop-filter:blur(10px);border-color:rgba(123,63,228,.15)}
+:root[data-theme="dark"] .vz-res .voz-res{background:rgba(255,255,255,.06)}
+.vz-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:460px}
+.vz-chips button{border:1px solid rgba(123,63,228,.2);background:rgba(255,255,255,.6);color:inherit;border-radius:999px;padding:8px 12px;font:inherit;font-size:.82rem;cursor:pointer}
+.vz-in{width:min(420px,100%);border-radius:16px;border:1px solid rgba(123,63,228,.25);background:rgba(255,255,255,.75);padding:12px 14px;font:inherit;font-size:1rem;color:#1B1530;resize:none}
+.vz-onda{display:flex;align-items:center;gap:3px;height:34px;margin-top:auto;opacity:.25;transition:opacity .4s}
+#vozPan.oye .vz-onda{opacity:1}
+.vz-onda i{width:3px;height:6px;border-radius:3px;background:linear-gradient(#A78BFA,#60A5FA)}
+#vozPan.oye .vz-onda i{animation:vzBar .9s ease-in-out infinite}
+@keyframes vzBar{0%,100%{height:5px}50%{height:30px}}
+.vz-seguir{border:0;border-radius:999px;background:#7B3FE4;color:#fff;font:inherit;font-weight:700;padding:13px 26px;box-shadow:0 10px 30px rgba(123,63,228,.35);cursor:pointer;animation:vzPal .4s both}
+.vz-ctrl{display:flex;align-items:center;gap:26px}
+.vz-b{width:50px;height:50px;border-radius:50%;border:0;background:rgba(255,255,255,.7);color:#1B1530;font-size:1.5rem;display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 14px rgba(60,30,120,.12)}
+.vz-b .i{width:20px;height:20px}
+.vz-mic{width:70px;height:70px;border-radius:50%;border:0;background:#7B3FE4;color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 12px 34px rgba(123,63,228,.45)}
+#vozPan.oye .vz-mic{animation:latido 1.2s ease-in-out infinite}
+.vz-stop{width:20px;height:20px;border-radius:5px;background:#fff}
+body.voz-abierta{overflow:hidden}
+@media (prefers-reduced-motion:reduce){#vozPan *,#vozPan{animation:none!important}}
+
+/* Registrar por voz */
+.voz-side{margin-bottom:8px}
+.voz-fab{position:fixed;right:16px;bottom:calc(84px + env(safe-area-inset-bottom,0px));width:50px;height:50px;border-radius:50%;border:0;background:var(--surface);color:var(--accent);box-shadow:0 6px 20px rgba(60,30,120,.25);display:grid;place-items:center;z-index:40;cursor:pointer}
+@media (min-width:901px){.voz-fab{display:none}}
+body.modo-rapido .voz-fab{display:none}
+.voz-mic-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;padding:6px 0 4px}
+.voz-mic{width:86px;height:86px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;cursor:pointer;box-shadow:0 10px 30px rgba(123,63,228,.4);transition:transform .2s}
+.voz-mic.on{animation:latido 1.2s ease-in-out infinite}
+@keyframes latido{0%,100%{box-shadow:0 0 0 0 rgba(123,63,228,.55)}50%{box-shadow:0 0 0 18px rgba(123,63,228,0)}}
+.voz-est{margin:0;color:var(--muted);font-size:.9rem;text-align:center}
+.voz-txt{resize:vertical;min-height:58px;font:inherit}
+.voz-res{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.voz-res div{display:flex;justify-content:space-between;gap:12px;padding:9px 12px;font-size:.9rem}.voz-res div+div{border-top:1px solid var(--line)}
+.voz-res span{color:var(--muted)}.voz-res b{text-align:right}
+
 .dia-card .card-h,.rapido-card .card-h{flex-wrap:nowrap;align-items:flex-start}
 .dia-card .inst-tit,.rapido-card .inst-tit{display:flex;gap:12px;align-items:flex-start;min-width:0}
 .dia-card .x{flex:none}
@@ -603,6 +661,7 @@ body.modo-rapido .app{grid-template-columns:minmax(0,1fr)}
 <div class="app">
   <aside class="side" aria-label="Menú">
     <div class="brand"><div class="brand-mark"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5.5"/><path d="M8 9.75h8M8 14.25h8"/></svg></div><b>Cuadre</b><span class="modo-off" hidden><i aria-hidden="true"></i>Modo sin conexión</span></div>
+    <button class="btn soft block voz-side" type="button" data-voz="1"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Registrar por voz</button>
     <button class="btn primary block" type="button" data-act="nuevo-gasto"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Registrar gasto</button>
     <nav class="nav" id="nav"></nav>
     <div class="side-foot"><button class="side-cfg" type="button" data-ajustes="1"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Configuración</span></button><div class="status"><span class="dot" id="dot"></span><span id="statusTxt">Cargando…</span></div></div>
@@ -1740,6 +1799,158 @@ document.addEventListener('click',e=>{
   t.disabled=true;
   patchCfg(c=>({...c,asistente:{...(c.asistente||{}),ignorar:[...new Set([...((c.asistente||{}).ignorar||[]),k])].slice(-200)}})).then(()=>toast('Listo, no lo volveremos a sugerir')).catch(err=>{t.disabled=false;toast(errText(err))});
 });
+
+/* ---------- Registrar por voz ----------
+   El dictado lo hace el navegador o el micrófono del teclado; la interpretación es local (funciona sin internet). */
+const sinAc=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+const NUMS={cero:0,un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10,once:11,doce:12,trece:13,catorce:14,quince:15,dieciseis:16,diecisiete:17,dieciocho:18,diecinueve:19,veinte:20,veintiun:21,veintiuno:21,veintidos:22,veintitres:23,veinticuatro:24,veinticinco:25,veintiseis:26,veintisiete:27,veintiocho:28,veintinueve:29,treinta:30,cuarenta:40,cincuenta:50,sesenta:60,setenta:70,ochenta:80,noventa:90,cien:100,ciento:100,doscientos:200,doscientas:200,trescientos:300,trescientas:300,cuatrocientos:400,cuatrocientas:400,quinientos:500,quinientas:500,seiscientos:600,seiscientas:600,setecientos:700,setecientas:700,ochocientos:800,ochocientas:800,novecientos:900,novecientas:900};
+// "mil quinientos" → 1500 ; "veinte y medio" → 20.5
+function palabrasANum(t){
+  const w=t.split(/\s+/),out=[];let i=0;
+  while(i<w.length){
+    if(!(w[i] in NUMS)&&w[i]!=='mil'&&!/^millon(es)?$/.test(w[i])){out.push(w[i]);i++;continue}
+    let tot=0,cur=0,j=i;
+    for(;j<w.length;j++){const x=w[j];
+      if(x in NUMS)cur+=NUMS[x];else if(x==='mil'){tot+=(cur||1)*1000;cur=0}else if(/^millon(es)?$/.test(x)){tot+=(cur||1)*1e6;cur=0}
+      else if(x==='y'&&j+1<w.length&&(w[j+1] in NUMS||w[j+1]==='medio')){if(w[j+1]==='medio'){cur+=.5;j++}}else break}
+    out.push(String(tot+cur));i=j;
+  }
+  return out.join(' ');
+}
+const DIAS_S=['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
+const MESES_S=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+function fechaDe(f,futuro){
+  const h=new Date(today()+'T12:00:00');const ad=n=>{const d=new Date(h);d.setDate(d.getDate()+n);return iso(d)};
+  if(/\bpasado manana\b/.test(f))return ad(2);if(/\bmanana\b/.test(f))return ad(1);
+  if(/\b(anteayer|antier|antes de ayer)\b/.test(f))return ad(-2);if(/\bayer\b/.test(f))return ad(-1);if(/\bhoy\b/.test(f))return ad(0);
+  let m=f.match(/\b(\d{1,2}) de ([a-z]+)/);if(m&&MESES_S.includes(m[2])){const d=new Date(h);d.setMonth(MESES_S.indexOf(m[2]),+m[1]);if(!futuro&&d>h)d.setFullYear(d.getFullYear()-1);if(futuro&&d<h)d.setFullYear(d.getFullYear()+1);return iso(d)}
+  m=f.match(/\b(?:el|dia) (\d{1,2})\b(?! (?:dolar|bolivar|bs|usdt|euro|\$))/);if(m&&+m[1]>=1&&+m[1]<=31){const d=new Date(h);d.setDate(+m[1]);if(!futuro&&d>h)d.setMonth(d.getMonth()-1);if(futuro&&d<h)d.setMonth(d.getMonth()+1);return iso(d)}
+  for(let i=0;i<7;i++)if(new RegExp('\\b'+DIAS_S[i]+'\\b').test(f)){let n=i-h.getDay();if(futuro){if(n<=0)n+=7}else if(n>0)n-=7;return ad(n)}
+  return '';
+}
+const CAT_KW={gasto:{'Víveres':'mercado|comida|viveres|supermercado|abasto|charcuteria|panaderia|pan|carne|pollo|frutas|verduras|almuerzo|desayuno|cena|restaurant|restaurante|hamburguesa|pizza|cafe|arepa|empanada','Transporte':'gasolina|taxi|pasaje|transporte|uber|ridery|bus|autobus|metro|estacionamiento|carro|moto|repuesto|cauchos','Salud':'farmacia|medicina|medicinas|medico|doctor|consulta|clinica|examen|dentista|laboratorio','Mascotas':'perro|perra|gato|gata|mascota|veterinario|perrarina|gatarina','Gastos fijos':'luz|agua|internet|alquiler|renta|condominio|telefono|gas|cantv|netflix|spotify|suscripcion|colegio|mensualidad','Educación':'curso|libro|libros|universidad|escuela|matricula|utiles','Ocio':'cine|fiesta|salida|cerveza|cervezas|rumba|juego|concierto|viaje|playa','Gastos personales':'ropa|zapatos|peluqueria|barberia|perfume|celular|maquillaje'},
+  ingreso:{'Salario':'sueldo|salario|quincena|nomina','Ventas':'venta|ventas|vendi','Freelance':'freelance|cliente|proyecto|trabajito','Regalos':'regalo|regalaron','Cobros':'cobre|cobro'}};
+const DIVISA=[['USDT',/\b(usdt|tether)\b/],['USD',/\$|\b(dolares?|divisas?|usd|verdes)\b/],['VES',/\b(bolivares?|bs|bolos|bss|bolivar)\b/],['EUR',/\b(euros?)\b/]];
+function interpretarVoz(txt){
+  const orig=String(txt||'').trim();let f=' '+palabrasANum(sinAc(orig).replace(/[¿?¡!,;]/g,' ').replace(/(\d)\.(?=\d{3}\b)/g,'$1'))+' ';
+  f=f.replace(/\s+/g,' ');
+  const r={tipo:'gasto',dir:'',monto:0,moneda:'',fecha:'',limite:'',categoria:'',metodo:'',persona:'',deuda:null,nota:''};
+  // ¿Qué es?
+  if(/\b(me debe|me deben|le preste|les preste|preste|me queda debiendo|me quedo debiendo)\b/.test(f)){r.tipo='deuda';r.dir='medeben'}
+  else if(/\b(debo|le debo|me presto|me prestaron|quede debiendo|me fiaron|fiado)\b/.test(f)){r.tipo='deuda';r.dir='debo'}
+  else if(/\b(me pagaron|me pago|cobre|recibi|ingreso|ingresaron|me depositaron|me transfirieron|me enviaron|vendi|gane|sueldo|salario|quincena|me abonaron)\b/.test(f))r.tipo='ingreso';
+  // Abono a una deuda que ya existe: "le pagué a Pedro 20", "Juan me pagó 10"
+  const act=deudas.filter(d=>pendiente(d)>0.004);
+  const dn=act.map(d=>[d,sinAc(d.titulo).trim()]).filter(([,n])=>n.length>=3&&f.includes(' '+n.split(' ')[0]+' ')).sort((a,b)=>b[1].length-a[1].length)[0];
+  if(dn&&r.tipo!=='deuda'&&/\b(pague|abone|cancele|le pague|me pago|me pagaron|me abono|cobre|devolvi|me devolvio)\b/.test(f)){r.tipo='abono';r.deuda=dn[0]}
+  // Monto y moneda
+  const m=f.match(/(?:\$\s?)?(\d+(?:[.,]\d{1,2})?)(?!\s*de (?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre))/g)||[];
+  const cand=m.map(x=>x.replace('$','').trim()).filter(x=>!new RegExp('\\b(el|dia) '+x.replace('.','\\.')+'\\b(?! (dolar|bolivar|bs|usdt|euro))').test(f));
+  if(cand.length)r.monto=+cand.sort((a,b)=>+b.replace(',','.')-+a.replace(',','.'))[0].replace(',','.');
+  for(const[c,rx]of DIVISA)if(rx.test(f)){r.moneda=c;break}
+  // Fechas: "para el / hasta el / vence" es fecha límite
+  const lim=f.match(/\b(para el|para|hasta el|hasta|vence el|vence|antes del|antes de)\b(.*)$/);
+  if(r.tipo==='deuda'&&lim){r.limite=fechaDe(lim[2],true);r.fecha=fechaDe(f.slice(0,f.indexOf(lim[0])),false)}else r.fecha=fechaDe(f,false);
+  // Método de pago
+  const mets=metodos.map(x=>[x,sinAc(x.nombre),sinAc(x.banco||'')]);
+  let met=mets.filter(([,n,b])=>(n.length>=3&&f.includes(n))||(b.length>=3&&f.includes(' '+b))).sort((a,b)=>b[1].length-a[1].length)[0];
+  if(!met&&/\befectivo\b/.test(f))met=mets.find(([x])=>x.tipo==='efectivo'&&(!r.moneda||x.moneda===r.moneda))||mets.find(([x])=>x.tipo==='efectivo');
+  if(!met&&/\bpago ?movil\b/.test(f))met=mets.find(([x])=>x.tipo==='digital');
+  if(!met&&r.moneda)met=mets.find(([x])=>x.moneda===r.moneda&&!isCred(x));
+  if(met){r.metodo=met[0].id;if(!r.moneda)r.moneda=met[0].moneda}
+  // Categoría (también las propias)
+  if(r.tipo==='gasto'||r.tipo==='ingreso'){
+    const cs=catsOf(r.tipo);r.categoria=cs.find(c=>c!=='Otros'&&f.includes(' '+sinAc(c)+' '))||'';
+    if(!r.categoria)for(const[c,kw]of Object.entries(CAT_KW[r.tipo]))if(cs.includes(c)&&new RegExp('\\b('+kw+')\\b').test(f)){r.categoria=c;break}
+  }
+  // Persona de la deuda
+  if(r.tipo==='deuda'){
+    const W='([a-zñ]+(?: [a-zñ]+)?)';
+    const p=f.match(new RegExp('\\b(?:debo a|le debo a|preste a|le preste a|me presto|me fio) '+W))||f.match(new RegExp('\\b'+W+' me (?:debe|deben|presto|fio)\\b'))||f.match(new RegExp('\\ba '+W+'\\b'));
+    if(p){const stop=/^(el|la|los|las|mi|un|una|que|le|lo|y|de|dolares|bolivares|bs|hoy|ayer)$/;const ws=p[1].split(' ').filter(x=>!stop.test(x)&&!/^\d/.test(x)&&!DIVISA.some(([,rx])=>rx.test(' '+x+' ')));
+      const nom=ws.slice(0,ws.length>1&&/^(para|hasta|desde|por|con|en)$/.test(ws[1])?1:2).filter(x=>!/^(para|hasta|desde|por|con|en)$/.test(x)).join(' ');
+      if(nom)r.persona=nom.replace(/\b\w/g,c=>c.toUpperCase())}
+  }
+  // Nota: lo que queda de la frase sin montos, monedas, fechas ni verbos
+  let n=' '+sinAc(orig)+' ';
+  n=n.replace(/\$?\d+([.,]\d+)?/g,' ').replace(/\b(gaste|pague|compre|gasto|egreso|me pagaron|me pago|cobre|recibi|ingreso|ingresaron|me depositaron|me transfirieron|vendi|gane|debo|le debo|me debe|me deben|preste|le preste|registra|registrar|anota|anotar|agrega|agregar|un|una|unos|unas|de|del|en|con|el|la|los|las|por|para|y|a|al|me|le|hoy|ayer|anteayer|antier|manana|dolares?|divisas?|bolivares?|bs|bolos|usdt|euros?|efectivo|pago movil|lunes|martes|miercoles|jueves|viernes|sabado|domingo|mil|cien|hasta|que)\b/g,' ');
+  mets.forEach(([,nm])=>{if(nm.length>=3)n=n.split(nm).join(' ')});
+  n=n.replace(/\s+/g,' ').trim();
+  r.nota=n&&n.length>=3?(n[0].toUpperCase()+n.slice(1)).slice(0,40):'';
+  return r;
+}
+const voz={txt:'',oyendo:false,err:'',rec:null};
+const SRec=window.SpeechRecognition||window.webkitSpeechRecognition;
+function vozResumen(r){
+  const T={gasto:'Gasto',ingreso:'Ingreso',deuda:r.dir==='debo'?'Deuda: yo debo':'Deuda: me deben',abono:'Pago de deuda'}[r.tipo];
+  const fila=(k,v)=>v?'<div><span>'+k+'</span><b>'+esc(v)+'</b></div>':'';
+  const met=metodo(r.metodo);
+  return '<div class="voz-res">'+fila('Tipo',T)+fila('Monto',r.monto?money(r.monto,r.moneda||(met?met.moneda:'USD')):'')+(r.tipo==='abono'?fila('Deuda',r.deuda.titulo):'')+fila(r.tipo==='deuda'?'Persona':'',r.persona)+fila('Fecha',r.fecha?longDate(r.fecha):'Hoy')+fila('Fecha límite',r.limite?longDate(r.limite):'')+fila('Categoría',r.categoria)+fila('Método',met?met.nombre:'')+fila('Nota',r.nota)+'</div>';
+}
+const VOZ_EJ=['Gasté 15 dólares en comida ayer','Me pagaron 300 bolívares por Pago Móvil','Le debo a Pedro 20 dólares para el viernes','María me debe 500 bolívares'];
+function vozForm(){
+  voz.txt='';voz.err='';voz.oyendo=false;voz.teclado=!SRec;
+  let el=document.getElementById('vozPan');if(!el){el=document.createElement('div');el.id='vozPan';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-label','Registrar por voz');document.body.appendChild(el)}
+  el.hidden=false;document.body.classList.add('voz-abierta');vozDibujar();
+  if(SRec)setTimeout(()=>vozEscuchar(),350);
+}
+function vozCerrar(){try{voz.rec&&voz.rec.abort()}catch(e){}voz.oyendo=false;const el=document.getElementById('vozPan');if(el){el.classList.add('sale');setTimeout(()=>{el.hidden=true;el.classList.remove('sale');el.innerHTML=''},280)}document.body.classList.remove('voz-abierta')}
+function vozDibujar(){
+  const el=document.getElementById('vozPan');if(!el||el.hidden)return;
+  const r=voz.txt.trim()?interpretarVoz(voz.txt):null,ok=r&&r.monto;
+  const est=voz.oyendo?'<span class="vz-dot"></span>Escuchando…':ok?'Entendido':voz.txt?'Revisa lo que dijiste':(SRec?'Toca el micrófono para hablar':'Dícta con el micrófono de tu teclado');
+  const ticks=Array.from({length:64},(_,i)=>'<i style="transform:rotate('+(i*360/64)+'deg) translateY(-104px);animation-delay:'+((i*37%64)/64).toFixed(2)+'s"></i>').join('');
+  const bars=Array.from({length:42},(_,i)=>'<i style="animation-delay:'+((i*53%42)/42*.9).toFixed(2)+'s"></i>').join('');
+  const words=voz.txt.trim().split(/\s+/).filter(Boolean);
+  el.className=(voz.oyendo?'oye':'')+(ok?' listo':'');
+  el.innerHTML='<div class="vz-top"><span class="vz-est">'+est+'</span></div>'+
+    '<div class="vz-orbe"><div class="vz-ticks">'+ticks+'</div><div class="vz-bola"></div></div>'+
+    '<div class="vz-txt">'+(words.length?words.map((w,i)=>'<span style="animation-delay:'+Math.min(i,20)*.04+'s">'+esc(w)+'</span>').join(' '):'<span class="vz-ph">'+(SRec?'Di algo como “Gasté 15 dólares en comida ayer”':'Escribe o dicta lo que quieres registrar')+'</span>')+'</div>'+
+    (voz.err?'<p class="vz-err">'+esc(voz.err)+'</p>':'')+
+    (ok?'<div class="vz-res">'+vozResumen(r)+'</div>':'')+
+    (!words.length?'<div class="vz-chips">'+VOZ_EJ.map(e=>'<button type="button" data-vozej="'+esc(e)+'">'+esc(e)+'</button>').join('')+'</div>':'')+
+    (voz.teclado?'<textarea class="vz-in" id="vozTxt" rows="2" placeholder="Escribe o usa el micrófono del teclado">'+esc(voz.txt)+'</textarea>':'')+
+    '<div class="vz-onda" aria-hidden="true">'+bars+'</div>'+
+    (ok?'<button class="vz-seguir" type="button" id="vozSeguir">Continuar →</button>':'')+
+    '<div class="vz-ctrl"><button type="button" class="vz-b" id="vozTec" aria-label="Escribir">'+'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2.5"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>'+'</button>'+
+    (SRec?'<button type="button" class="vz-mic" id="vozMic" aria-label="'+(voz.oyendo?'Detener':'Hablar')+'">'+(voz.oyendo?'<span class="vz-stop"></span>':icoMic.replace('width="34" height="34"','width="26" height="26"'))+'</button>':'')+
+    '<button type="button" class="vz-b" id="vozX" aria-label="Cerrar">×</button></div>';
+  const t=document.getElementById('vozTxt');if(t&&voz.focoTec){t.focus();t.setSelectionRange(t.value.length,t.value.length);voz.focoTec=false}
+}
+document.addEventListener('click',e=>{
+  const p=document.getElementById('vozPan');if(!p||p.hidden||!p.contains(e.target))return;
+  const b=e.target.closest('button');if(!b)return;
+  if(b.id==='vozX')vozCerrar();
+  else if(b.id==='vozMic')vozEscuchar();
+  else if(b.id==='vozTec'){voz.teclado=!voz.teclado;voz.focoTec=voz.teclado;try{voz.oyendo&&voz.rec.stop()}catch(x){}vozDibujar()}
+  else if(b.dataset.vozej){voz.txt=b.dataset.vozej;vozDibujar()}
+  else if(b.id==='vozSeguir'){const r=interpretarVoz(voz.txt);vozCerrar();setTimeout(()=>vozAplicar(r),200)}
+});
+document.addEventListener('input',e=>{if(e.target.id!=='vozTxt')return;voz.txt=e.target.value;clearTimeout(voz.t);voz.t=setTimeout(()=>{voz.focoTec=true;vozDibujar()},500)});
+document.addEventListener('keydown',e=>{const p=document.getElementById('vozPan');if(!p||p.hidden)return;if(e.key==='Escape')vozCerrar();if(e.key==='Enter'&&e.target.id==='vozTxt'){e.preventDefault();const b=document.getElementById('vozSeguir');if(b)b.click()}});
+function vozEscuchar(){
+  if(voz.oyendo){try{voz.rec.stop()}catch(e){}return}
+  const rec=new SRec();voz.rec=rec;rec.lang='es-VE';rec.interimResults=true;rec.continuous=false;rec.maxAlternatives=1;
+  const base=voz.txt;voz.err='';
+  rec.onresult=e=>{let t='';for(const x of e.results)t+=x[0].transcript;voz.txt=(base?base+' ':'')+t;vozDibujar()};
+  rec.onerror=e=>{voz.err=e.error==='network'?'El dictado del navegador necesita internet. Sin conexión, toca el lápiz y usa el micrófono de tu teclado.':e.error==='not-allowed'||e.error==='service-not-allowed'?'Permite el uso del micrófono para esta página en los ajustes del navegador.':e.error==='no-speech'?'No te escuché. Toca el micrófono e intenta de nuevo.':'';if(e.error==='network')voz.teclado=true};
+  rec.onend=()=>{voz.oyendo=false;vozDibujar()};
+  try{rec.start();voz.oyendo=true}catch(e){voz.err='No se pudo usar el micrófono.'}
+  vozDibujar();
+}
+function vozAplicar(r){
+  if(r.tipo==='abono'){abonoForm(r.deuda,null,{monto:showNum(r.monto),fecha:r.fecha||today()});return}
+  if(r.tipo==='deuda'){deudaForm(null,{dir:r.dir,clase:'persona',titulo:r.persona||'',monto:showNum(r.monto),moneda:r.moneda||'USD',desde:r.fecha||today(),limite:r.limite||''});return}
+  if(!metodos.length){toast('Primero agrega un método de pago');return}
+  let mid=r.metodo;if(!mid){const l=metodos.find(m=>!isCred(m));mid=(l||metodos[0]).id}
+  const mm=metodo(mid);let monto=r.monto;
+  if(r.moneda&&mm.moneda!==r.moneda){const c=convertir(monto,r.moneda,mm.moneda);if(c!=null)monto=Math.round(c*100)/100}
+  movForm(null,null,{tipo:r.tipo,monto:showNum(monto),metodo:mid,destino:'',montoDestino:'',destTocado:false,categoria:r.categoria,fecha:r.fecha||today(),hora:(!r.fecha||r.fecha===today())?horaAhora():'',nota:r.nota});
+  if(r.moneda&&mm.moneda!==r.moneda)setTimeout(()=>toast('Lo pasé a '+mm.moneda+' porque '+mm.nombre+' está en esa moneda'),300);
+}
+const icoMic='<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-voz]');if(t){e.preventDefault();if(!ready()||!tienePerfil())return;vozForm()}});
 /* ---------- Instalar la app en la pantalla de inicio (versión web) ---------- */
 const inst={evt:null,oculto:false};
 try{inst.oculto=localStorage.getItem('cuadre-instalar-oculto')==='1'}catch(e){}
@@ -2385,7 +2596,7 @@ function render(){
   const navs=[['inicio','Inicio'],['movs','Movimientos'],['metodos','Métodos de pago'],['deudas','Deudas'],['perfil','Perfil']].concat(esAdminNube()?[['admin','Administrador']]:[]);
   $('#nav').innerHTML=navs.map(([k,l])=>'<button type="button" data-nav="'+k+'"'+(view===k?' aria-current="page"':'')+'>'+(k==='perfil'?svg('persona',1.8):svg(k,1.8))+'<span>'+l+'</span></button>').join('');
   const bb=(k,l)=>'<button type="button" data-nav="'+k+'"'+(view===k?' aria-current="page"':'')+'>'+svg(k,1.8)+'<span>'+l+'</span></button>';
-  $('#bottombar').innerHTML=bb('inicio','Inicio')+bb('movs','Movimientos')+'<button type="button" class="fab" data-act="nuevo-gasto" aria-label="Registrar movimiento">'+svg('plus',2.6)+'</button>'+bb('metodos','Métodos')+bb('deudas','Deudas')+'<button type="button" data-nav="perfil"'+(view==='perfil'?' aria-current="page"':'')+'>'+svg('persona',1.8)+'<span>Perfil</span></button>';
+  $('#bottombar').innerHTML=bb('inicio','Inicio')+bb('movs','Movimientos')+'<button type="button" class="fab" data-act="nuevo-gasto" aria-label="Registrar movimiento">'+svg('plus',2.6)+'</button><button type="button" class="voz-fab" data-voz="1" aria-label="Registrar por voz">'+icoMic.replace('width="34" height="34"','width="22" height="22"')+'</button>'+bb('metodos','Métodos')+bb('deudas','Deudas')+'<button type="button" data-nav="perfil"'+(view==='perfil'?' aria-current="page"':'')+'>'+svg('persona',1.8)+'<span>Perfil</span></button>';
   const ma=$('#mtopAdm');if(ma)ma.innerHTML=esAdminNube()?'<button class="btn sm mtop-adm" type="button" data-nav="admin"'+(view==='admin'?' aria-current="page"':'')+'>'+svg('admin',2)+'Administrador</button>':'';
   const banner=(bannerMsg?'<div class="banner"><span>'+esc(bannerMsg)+'</span></div>':'')+(mode==='nube'&&nube.offline&&ready()?'<div class="banner off" role="status"><span class="off-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 5.2-2.8M19 13a10 10 0 0 0-2.2-1.6M2 8.8a15 15 0 0 1 4.2-2.6M22 8.8A15 15 0 0 0 10.7 5"/><circle cx="12" cy="20" r=".8" fill="currentColor"/></svg></span><span><b>Sin internet.</b> <span>Puedes seguir usando Cuadre normalmente.</span> <span>'+(nube.pend?'Tienes '+nube.pend+(nube.pend===1?' cambio guardado':' cambios guardados')+' en este equipo; se suben solos a tu cuenta cuando vuelva la conexión.':'Lo que registres se guarda en este equipo y se sube solo a tu cuenta cuando vuelva la conexión.')+'</span></span></div>':'');
   if(verLegal){document.body.classList.add('onb');$('#view').innerHTML=vLegal();return}
@@ -2643,10 +2854,11 @@ function inicioDeudas(){
     (prox.length?'<div style="margin-top:10px">'+prox.slice(0,4).map(([d,c])=>{const[k,l]=plazo(c.fecha);return '<div class="crow"><span class="st '+k+'">'+l+'</span><span>'+esc(d.titulo)+'</span><span class="num">'+(c.monto?dual([[d.moneda,c.monto]]).main:'')+'</span><button class="btn sm soft" type="button" data-pay-cuota="'+esc(d.id)+'|'+esc(c.id)+'">'+(d.dir==='debo'?'Pagar':'Cobrar')+'</button></div>'}).join('')+'</div>':'')+'</div>';
 }
 
-function deudaForm(d){
+function deudaForm(d,preset){
   const isNew=!d;
   const st={dir:d?d.dir:dTab,clase:d?d.clase:'',titulo:d?d.titulo:'',descripcion:d?d.descripcion||'':'',monto:d?showNum(d.monto):'',moneda:d?d.moneda:'USD',desde:d?(d.desde||today()):today(),limite:d?(d.limite||''):'',
     cuotas:d?(d.cuotas||[]).map(c=>({...c,monto:c.monto==null?'':showNum(c.monto)})):[],nGen:'',fGen:addMonthsDate(today(),1),quitar:new Set()};
+  if(preset)Object.assign(st,preset);
   const eq=()=>{const v=parseNum(st.monto);return st.moneda==='VES'&&tasa()&&v>0?'≈ '+money(v/tasa(),'USD')+' a tasa Binance':''};
   openSheet({
     draw(){
@@ -2745,10 +2957,11 @@ function abonoRow(d,a){
   return '<div class="hrow"><div><b>'+esc(shortDate(a.fecha))+'</b><small>'+esc(abonoMet(a))+'</small></div><div class="hamt"><b>'+abonoMain(d,a)+'</b>'+(sub?'<small>'+sub+'</small>':'')+'</div></div>';
 }
 
-function abonoForm(d,cuotaId){
+function abonoForm(d,cuotaId,preset){
   const deb=d.dir==='debo';const cu=cuotaId?(d.cuotas||[]).find(c=>c.id===cuotaId):null;
   const ves=d.moneda==='VES',divisa=d.moneda==='USD'||d.moneda==='USDT';
   const st={monto:cu&&cu.monto?showNum(Math.min(cu.monto,pendiente(d))):'',fecha:today(),metodo:'',enBs:false,tasaP:tasa()?showNum(tasa()):'',montoMet:''};
+  if(preset)Object.assign(st,preset);
   const tP=()=>parseNum(st.tasaP);
   const usesBs=()=>ves||(divisa&&st.enBs);
   const calc=()=>{const a=parseNum(st.monto),t=tP();if(!(a>0))return{bs:null,usd:null};if(ves)return{bs:a,usd:t>0?a/t:null};if(divisa&&st.enBs)return{bs:t>0?a*t:null,usd:a};return{bs:null,usd:null}};
