@@ -522,6 +522,10 @@ textarea.input{resize:vertical;min-height:70px;font:inherit}
 .foto-btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .foto-cam{position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;background:var(--surface);color:var(--accent);border:2px solid var(--accent);display:grid;place-items:center}
 .foto-wrap .link{font-size:.78rem;color:var(--muted)}
+.inv-check{align-items:flex-start;padding:12px;border-radius:14px;background:var(--soft)}.inv-check span{display:flex;flex-direction:column;gap:2px}.inv-check small{color:var(--muted);font-size:.8rem}
+.inv-tag{display:inline-block;font-size:.68rem;font-weight:700;color:var(--pos);background:var(--pos-soft);padding:1px 6px;border-radius:999px;margin-right:2px}
+.vz-txt span{animation:none}.vz-txt span.nu{animation:vzPal .45s cubic-bezier(.16,1,.3,1) both}
+
 /* Por clasificar */
 .clasif-head{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px;border-radius:16px;background:var(--soft);text-align:center}
 .clasif-head span{font-size:.85rem;color:var(--muted);font-weight:600}.clasif-head b{font-size:1.9rem;letter-spacing:-.02em}
@@ -1744,7 +1748,7 @@ function asisGrupo(v){
 function analizarGastos(){
   const hoy=pdate(today()),ms=864e5,dia=f=>Math.floor((hoy-pdate(f))/ms);
   const ign=asisIgnorados();
-  const g=movs.filter(v=>v.tipo==='gasto'&&v.fecha&&dia(v.fecha)>=0);
+  const g=movs.filter(v=>v.tipo==='gasto'&&!v.inversion&&v.fecha&&dia(v.fecha)>=0);
   const sem=g.filter(v=>dia(v.fecha)<7),mes=g.filter(v=>dia(v.fecha)<30),prev=g.filter(v=>dia(v.fecha)>=7&&dia(v.fecha)<35);
   const sinTasa=sem.some(v=>asisUSD(v)==null);
   const tot=l=>l.reduce((s,v)=>s+(asisUSD(v)||0),0);
@@ -1889,6 +1893,7 @@ function interpretarVoz(txt){
   mets.forEach(([,nm])=>{if(nm.length>=3)n=n.split(nm).join(' ')});
   n=n.replace(/\s+/g,' ').trim();
   r.nota=n&&n.length>=3?(n[0].toUpperCase()+n.slice(1)).slice(0,40):'';
+  r.inversion=r.tipo==='gasto'&&/\b(inverti|inversion|invertir)\b/.test(f);
   return r;
 }
 const voz={txt:'',oyendo:false,err:'',rec:null};
@@ -1897,7 +1902,7 @@ function vozResumen(r){
   const T={gasto:'Gasto',ingreso:'Ingreso',deuda:r.dir==='debo'?'Deuda: yo debo':'Deuda: me deben',abono:'Pago de deuda'}[r.tipo];
   const fila=(k,v)=>v?'<div><span>'+k+'</span><b>'+esc(v)+'</b></div>':'';
   const met=metodo(r.metodo);
-  return '<div class="voz-res">'+fila('Tipo',T)+fila('Monto',r.monto?money(r.monto,r.moneda||(met?met.moneda:'USD')):'')+(r.tipo==='abono'?fila('Deuda',r.deuda.titulo):'')+fila(r.tipo==='deuda'?'Persona':'',r.persona)+fila('Fecha',r.fecha?longDate(r.fecha):'Hoy')+fila('Fecha límite',r.limite?longDate(r.limite):'')+fila('Categoría',r.categoria)+fila('Método',met?met.nombre:'')+fila('Nota',r.nota)+'</div>';
+  return '<div class="voz-res">'+fila('Tipo',T)+fila('Monto',r.monto?money(r.monto,r.moneda||(met?met.moneda:'USD')):'')+(r.tipo==='abono'?fila('Deuda',r.deuda.titulo):'')+fila(r.tipo==='deuda'?'Persona':'',r.persona)+fila('Fecha',r.fecha?longDate(r.fecha):'Hoy')+fila('Fecha límite',r.limite?longDate(r.limite):'')+fila('Categoría',r.categoria)+(r.inversion?fila('Inversión','Sí'):'')+fila('Método',met?met.nombre:'')+fila('Nota',r.nota)+'</div>';
 }
 const VOZ_EJ=['Gasté 15 dólares en comida ayer','Me pagaron 300 bolívares por Pago Móvil','Le debo a Pedro 20 dólares para el viernes','María me debe 500 bolívares'];
 function vozForm(){
@@ -1906,28 +1911,40 @@ function vozForm(){
   el.hidden=false;document.body.classList.add('voz-abierta');vozDibujar();
   if(SRec&&!voz.teclado)setTimeout(()=>vozEscuchar(),350);
 }
-function vozCerrar(){try{voz.rec&&voz.rec.abort()}catch(e){}voz.oyendo=false;const el=document.getElementById('vozPan');if(el){el.classList.add('sale');setTimeout(()=>{el.hidden=true;el.classList.remove('sale');el.innerHTML=''},280)}document.body.classList.remove('voz-abierta')}
+function vozCerrar(){try{voz.rec&&voz.rec.abort()}catch(e){}voz.oyendo=false;clearTimeout(voz.tSil);clearTimeout(voz.tMax);clearTimeout(voz.tNada);clearTimeout(voz.tFin);const el=document.getElementById('vozPan');if(el){el.hidden=true;el.innerHTML='';el.dataset.tec=''}document.body.classList.remove('voz-abierta')}
 function vozDibujar(){
   const el=document.getElementById('vozPan');if(!el||el.hidden)return;
-  const r=voz.txt.trim()?interpretarVoz(voz.txt):null,ok=r&&r.monto;
-  const est=voz.oyendo?'<span class="vz-dot"></span>Escuchando…':ok?'Entendido':voz.txt?'Revisa lo que dijiste':(SRec?'Toca el micrófono para hablar':'Dícta con el micrófono de tu teclado');
-  const ticks=Array.from({length:64},(_,i)=>'<i style="transform:rotate('+(i*360/64)+'deg) translateY(-104px);animation-delay:'+((i*37%64)/64).toFixed(2)+'s"></i>').join('');
-  const bars=Array.from({length:42},(_,i)=>'<i style="animation-delay:'+((i*53%42)/42*.9).toFixed(2)+'s"></i>').join('');
+  if(el.dataset.tec!==String(voz.teclado)||!el.firstChild){
+    const ticks=Array.from({length:64},(_,i)=>'<i style="transform:rotate('+(i*360/64)+'deg) translateY(-104px);animation-delay:'+((i*37%64)/64).toFixed(2)+'s"></i>').join('');
+    const bars=Array.from({length:42},(_,i)=>'<i style="animation-delay:'+((i*53%42)/42*.9).toFixed(2)+'s"></i>').join('');
+    el.dataset.tec=String(voz.teclado);
+    el.innerHTML='<div class="vz-top"><span class="vz-est" id="vzEst"></span></div><div class="vz-orbe"><div class="vz-ticks">'+ticks+'</div><div class="vz-bola"></div></div>'+
+      '<div class="vz-txt" id="vzTxt"></div><p class="vz-err" id="vzErr" hidden></p><div class="vz-res" id="vzRes"></div>'+
+      '<div class="vz-chips" id="vzChips">'+VOZ_EJ.map(e=>'<button type="button" data-vozej="'+esc(e)+'">'+esc(e)+'</button>').join('')+'</div>'+
+      (voz.teclado?'<textarea class="vz-in" id="vozTxt" rows="2" placeholder="Toca aquí y usa el micrófono del teclado">'+esc(voz.txt)+'</textarea>':'')+
+      '<div class="vz-onda" aria-hidden="true">'+bars+'</div><button class="vz-seguir" type="button" id="vozSeguir" hidden>Continuar →</button>'+
+      '<div class="vz-ctrl"><button type="button" class="vz-b" id="vozTec" aria-label="Escribir"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2.5"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg></button>'+
+      (SRec?'<button type="button" class="vz-mic" id="vozMic"></button>':'')+'<button type="button" class="vz-b" id="vozX" aria-label="Cerrar">×</button></div>';
+    const t=document.getElementById('vozTxt');if(t&&voz.focoTec){try{t.focus()}catch(e){}voz.focoTec=false}
+  }
+  vozParcial();
+}
+function vozParcial(){
+  const el=document.getElementById('vozPan');if(!el||el.hidden)return;
+  const r=voz.txt.trim()?interpretarVoz(voz.txt):null,ok=!!(r&&r.monto);
   const words=voz.txt.trim().split(/\s+/).filter(Boolean);
   el.className=(voz.oyendo?'oye':'')+(ok?' listo':'');
-  el.innerHTML='<div class="vz-top"><span class="vz-est">'+est+'</span></div>'+
-    '<div class="vz-orbe"><div class="vz-ticks">'+ticks+'</div><div class="vz-bola"></div></div>'+
-    '<div class="vz-txt">'+(words.length?words.map((w,i)=>'<span style="animation-delay:'+Math.min(i,20)*.04+'s">'+esc(w)+'</span>').join(' '):'<span class="vz-ph">'+(SRec?'Di algo como “Gasté 15 dólares en comida ayer”':'Escribe o dicta lo que quieres registrar')+'</span>')+'</div>'+
-    (voz.err?'<p class="vz-err">'+esc(voz.err)+'</p>':'')+
-    (ok?'<div class="vz-res">'+vozResumen(r)+'</div>':'')+
-    (!words.length?'<div class="vz-chips">'+VOZ_EJ.map(e=>'<button type="button" data-vozej="'+esc(e)+'">'+esc(e)+'</button>').join('')+'</div>':'')+
-    (voz.teclado?'<textarea class="vz-in" id="vozTxt" rows="2" placeholder="Escribe o usa el micrófono del teclado">'+esc(voz.txt)+'</textarea>':'')+
-    '<div class="vz-onda" aria-hidden="true">'+bars+'</div>'+
-    (ok?'<button class="vz-seguir" type="button" id="vozSeguir">Continuar →</button>':'')+
-    '<div class="vz-ctrl"><button type="button" class="vz-b" id="vozTec" aria-label="Escribir">'+'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2.5"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>'+'</button>'+
-    (SRec?'<button type="button" class="vz-mic" id="vozMic" aria-label="'+(voz.oyendo?'Detener':'Hablar')+'">'+(voz.oyendo?'<span class="vz-stop"></span>':icoMic.replace('width="34" height="34"','width="26" height="26"'))+'</button>':'')+
-    '<button type="button" class="vz-b" id="vozX" aria-label="Cerrar">×</button></div>';
-  const t=document.getElementById('vozTxt');if(t&&voz.focoTec){t.focus();t.setSelectionRange(t.value.length,t.value.length);voz.focoTec=false}
+  const q=id=>document.getElementById(id);
+  q('vzEst').innerHTML=voz.oyendo?'<span class="vz-dot"></span>Escuchando…':ok?'Entendido':voz.txt?'Dime el monto para continuar':(voz.teclado?'Toca el cuadro y dicta con el micrófono del teclado':'Toca el micrófono para hablar');
+  const prev=q('vzTxt').dataset.n|0;
+  q('vzTxt').innerHTML=words.length?words.map((w,i)=>'<span'+(i>=prev?' class="nu"':'')+'>'+esc(w)+'</span>').join(' '):'<span class="vz-ph">Di algo como “Gasté 15 dólares en comida ayer”</span>';
+  q('vzTxt').dataset.n=words.length;
+  const er=q('vzErr');er.hidden=!voz.err;er.textContent=voz.err||'';
+  q('vzRes').innerHTML=ok?vozResumen(r):'';
+  q('vzChips').hidden=!!words.length;
+  q('vozSeguir').hidden=!ok;
+  const mic=q('vozMic');if(mic){mic.setAttribute('aria-label',voz.oyendo?'Detener':'Hablar');mic.innerHTML=voz.oyendo?'<span class="vz-stop"></span>':icoMic.replace('width="34" height="34"','width="26" height="26"')}
+  const t=q('vozTxt');if(t&&t.value!==voz.txt&&document.activeElement!==t)t.value=voz.txt;
 }
 document.addEventListener('click',e=>{
   const p=document.getElementById('vozPan');if(!p||p.hidden||!p.contains(e.target))return;
@@ -1935,10 +1952,10 @@ document.addEventListener('click',e=>{
   if(b.id==='vozX')vozCerrar();
   else if(b.id==='vozMic')vozEscuchar();
   else if(b.id==='vozTec'){voz.teclado=!voz.teclado;voz.focoTec=voz.teclado;try{voz.oyendo&&voz.rec.stop()}catch(x){}vozDibujar()}
-  else if(b.dataset.vozej){voz.txt=b.dataset.vozej;vozDibujar()}
-  else if(b.id==='vozSeguir'){const r=interpretarVoz(voz.txt);vozCerrar();setTimeout(()=>vozAplicar(r),200)}
+  else if(b.dataset.vozej){voz.txt=b.dataset.vozej;const t=document.getElementById('vozTxt');if(t)t.value=voz.txt;vozParcial()}
+  else if(b.id==='vozSeguir'){const r=interpretarVoz(voz.txt);vozCerrar();vozAplicar(r)}
 });
-document.addEventListener('input',e=>{if(e.target.id!=='vozTxt')return;voz.txt=e.target.value;clearTimeout(voz.t);voz.t=setTimeout(()=>{voz.focoTec=true;vozDibujar()},500)});
+document.addEventListener('input',e=>{if(e.target.id!=='vozTxt')return;voz.txt=e.target.value;clearTimeout(voz.t);voz.t=setTimeout(vozParcial,250)});
 document.addEventListener('keydown',e=>{const p=document.getElementById('vozPan');if(!p||p.hidden)return;if(e.key==='Escape')vozCerrar();if(e.key==='Enter'&&e.target.id==='vozTxt'){e.preventDefault();const b=document.getElementById('vozSeguir');if(b)b.click()}});
 function vozEscuchar(){
   if(voz.oyendo){vozParar();return}
@@ -1966,7 +1983,7 @@ function vozAplicar(r){
   let mid=r.metodo;if(!mid){const l=metodos.find(m=>!isCred(m));mid=(l||metodos[0]).id}
   const mm=metodo(mid);let monto=r.monto;
   if(r.moneda&&mm.moneda!==r.moneda){const c=convertir(monto,r.moneda,mm.moneda);if(c!=null)monto=Math.round(c*100)/100}
-  movForm(null,null,{tipo:r.tipo,monto:showNum(monto),metodo:mid,destino:'',montoDestino:'',destTocado:false,categoria:r.categoria,fecha:r.fecha||today(),hora:(!r.fecha||r.fecha===today())?horaAhora():'',nota:r.nota});
+  movForm(null,null,{tipo:r.tipo,monto:showNum(monto),metodo:mid,destino:'',montoDestino:'',destTocado:false,categoria:r.categoria,fecha:r.fecha||today(),hora:(!r.fecha||r.fecha===today())?horaAhora():'',nota:r.nota,inversion:!!r.inversion});
   if(r.moneda&&mm.moneda!==r.moneda)setTimeout(()=>toast('Lo pasé a '+mm.moneda+' porque '+mm.nombre+' está en esa moneda'),300);
 }
 const icoMic='<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
@@ -2446,7 +2463,7 @@ try{_obs.observe(document.body,{childList:true,subtree:true,characterData:true})
 /* ---------- Diccionario inglés ---------- */
 I18N.dic={
 // Navegación y generales
-'Inicio':'Home','Miembro Premium':'Premium member','Hora':'Time','Tus finanzas en orden':'Your finances in order','Actualizar en vivo':'Update live','(BCV oficial y Binance P2P, cada 10 minutos)':'(official BCV and Binance P2P, every 10 minutes)','Recordatorio diario':'Daily reminder','Te avisamos para que registres tus ingresos, egresos y deudas del día. Al mediodía solo si aún no has anotado nada; en la noche, con el cierre del día.':'We remind you to record the day\'s income, expenses and debts. At noon only if you haven\'t logged anything yet; at night, with an end-of-day check.','Recordarme registrar mis movimientos':'Remind me to record my transactions','8:00 a. m.':'8:00 AM','12:00 m.':'12:00 PM','6:00 p. m.':'6:00 PM','9:00 p. m.':'9:00 PM','Enviar notificación de prueba':'Send test notification','Te enviamos una notificación de prueba':'We sent you a test notification','No pudimos enviarla. Intenta de nuevo en un momento.':'We couldn\'t send it. Try again in a moment.','En iPhone, instala Cuadre en tu pantalla de inicio para recibir recordatorios.':'On iPhone, install Cuadre on your home screen to get reminders.','Activa las notificaciones de este dispositivo para recibir recordatorios.':'Turn on notifications on this device to get reminders.','En iPhone, los recordatorios llegan cuando instalas Cuadre en tu pantalla de inicio (Perfil → Instala Cuadre) y permites las notificaciones.':'On iPhone, reminders arrive once you install Cuadre on your home screen (Profile → Install Cuadre) and allow notifications.','Activa “Recibir notificaciones en este dispositivo” para que te lleguen aunque la app esté cerrada.':'Turn on “Receive notifications on this device” so they arrive even when the app is closed.','Cierre del día':'End of day','¿Ya registraste lo de hoy?':'Did you log today\'s activity?','Hoy no registraste ingresos, egresos ni movimientos de deudas. Si hubo alguno, anótalo ahora para mantener tus cuentas al día.':'You didn\'t record any income, expenses or debt payments today. If there were any, add them now to keep your accounts up to date.','Todavía no tienes movimientos de hoy. Anótalos ahora y mantén tus cuentas al día.':'You have no transactions today yet. Add them now and keep your accounts up to date.','Ocultar por hoy':'Hide for today','Invita y gana Premium':'Invite and earn Premium','Tu código':'Your code','Compartir invitación':'Share invite','Copiar código':'Copy code','Código copiado':'Code copied','Invitación copiada: pégala en WhatsApp o donde quieras':'Invite copied: paste it in WhatsApp or anywhere','amigo invitado':'friend invited','amigos invitados':'friends invited','pagaron Premium':'paid Premium','pagó Premium':'paid Premium','semana ganada':'week earned','semanas ganadas':'weeks earned','Pagó Premium · +2 semanas':'Paid Premium · +2 weeks','Registrado · +1 semana':'Signed up · +1 week','Aún no has invitado a nadie. Comparte tu código y empieza a ganar semanas.':'You haven\'t invited anyone yet. Share your code and start earning weeks.','¿Te invitó alguien? Escribe su código':'Did someone invite you? Enter their code','Usar código':'Use code','Así le regalas una semana de Premium a quien te invitó.':'This gives the person who invited you a week of Premium.','Premium por referidos':'Premium from referrals','Tu Premium por referidos vence':'Your referral Premium expires','Escribe el código de quien te invitó.':'Enter the code of the person who invited you.','Ese código no existe. Revísalo con quien te invitó.':'That code doesn\'t exist. Check it with whoever invited you.','Ese es tu propio código: compártelo con tus amigos.':'That\'s your own code: share it with your friends.','Ya usaste un código de referido.':'You already used a referral code.','El código de quien te invitó solo se puede usar en las 2 primeras semanas de tu cuenta.':'A referral code can only be used in your account\'s first 2 weeks.','No puedes usar el código de alguien que tú invitaste.':'You can\'t use the code of someone you invited.','Ese código es de otra cuenta abierta en este mismo equipo.':'That code belongs to another account on this same device.','No se pudo usar ese código.':'That code couldn\'t be used.','Cuadre Rápido':'Cuadre Quick','Total restante':'Remaining total','Ingresos del mes':'Income this month','Egresos del mes':'Expenses this month','Abrir Cuadre completo →':'Open full Cuadre →','Abrir Cuadre Rápido':'Open Cuadre Quick','Copiar enlace':'Copy link','Ver Cuadre Rápido':'View Cuadre Quick','Enlace copiado':'Link copied','Primero agrega un método de pago':'Add a payment method first','Un acceso directo en tu pantalla de inicio: al tocarlo ves al instante ingresos, egresos y tu total restante, y registras con un toque. Sin entrar a toda la app.':'A shortcut on your home screen: tap it to instantly see income, expenses and your remaining total, and record with one tap. No need to open the whole app.','En Android también puedes mantener presionado el ícono de Cuadre para ver atajos: Registrar gasto, Registrar ingreso y Cuadre Rápido.':'On Android you can also press and hold the Cuadre icon for shortcuts: Add expense, Add income and Cuadre Quick.','Modo sin conexión':'Offline mode','Sin internet.':'No internet.','Listo: se subió a la nube el cambio que hiciste sin internet':'Done: the change you made offline was uploaded','Puedes seguir usando Cuadre normalmente.':'You can keep using Cuadre as usual.','Lo que registres se guarda en este equipo y se sube solo a tu cuenta cuando vuelva la conexión.':'Whatever you add is saved on this device and uploads to your account automatically when you\'re back online.','Sin internet · usando lo guardado aquí':'Offline · using data saved here','Mis categorías':'My categories','Crea tus propias categorías. Toca una para cambiarle el nombre.':'Create your own categories. Tap one to rename it.','Gastos':'Expenses','Ingresos':'Income','Agregar':'Add','Ej. Seguro, Peluquería':'e.g. Insurance, Haircut','Ej. Alquiler, Comisiones':'e.g. Rent, Commissions','Aún no tienes categorías propias de gastos.':'You have no custom expense categories yet.','Aún no tienes categorías propias de ingresos.':'You have no custom income categories yet.','Cambiar nombre':'Rename','Escribe el nombre de la categoría.':'Type the category name.','Membresía activa':'Active membership','Bienvenido a Cuadre Premium':'Welcome to Cuadre Premium','Gracias por apoyar a Cuadre. Ya tienes todas las funciones, sin límites.':'Thanks for supporting Cuadre. You now have every feature, with no limits.','Movimientos':'Transactions','Métodos de pago':'Payment methods','Métodos':'Methods','Deudas':'Debts','Perfil':'Profile','Administrador':'Admin','Configuración':'Settings',
+'Inicio':'Home','Miembro Premium':'Premium member','Hora':'Time','Es una inversión':'It\'s an investment','Inversión':'Investment','Algo que te va a generar ganancias (mercancía, herramientas, un curso). El asistente no lo contará como gasto a recortar.':'Something that will earn you money (stock, tools, a course). The assistant won\'t count it as an expense to cut.','Tus finanzas en orden':'Your finances in order','Actualizar en vivo':'Update live','(BCV oficial y Binance P2P, cada 10 minutos)':'(official BCV and Binance P2P, every 10 minutes)','Recordatorio diario':'Daily reminder','Te avisamos para que registres tus ingresos, egresos y deudas del día. Al mediodía solo si aún no has anotado nada; en la noche, con el cierre del día.':'We remind you to record the day\'s income, expenses and debts. At noon only if you haven\'t logged anything yet; at night, with an end-of-day check.','Recordarme registrar mis movimientos':'Remind me to record my transactions','8:00 a. m.':'8:00 AM','12:00 m.':'12:00 PM','6:00 p. m.':'6:00 PM','9:00 p. m.':'9:00 PM','Enviar notificación de prueba':'Send test notification','Te enviamos una notificación de prueba':'We sent you a test notification','No pudimos enviarla. Intenta de nuevo en un momento.':'We couldn\'t send it. Try again in a moment.','En iPhone, instala Cuadre en tu pantalla de inicio para recibir recordatorios.':'On iPhone, install Cuadre on your home screen to get reminders.','Activa las notificaciones de este dispositivo para recibir recordatorios.':'Turn on notifications on this device to get reminders.','En iPhone, los recordatorios llegan cuando instalas Cuadre en tu pantalla de inicio (Perfil → Instala Cuadre) y permites las notificaciones.':'On iPhone, reminders arrive once you install Cuadre on your home screen (Profile → Install Cuadre) and allow notifications.','Activa “Recibir notificaciones en este dispositivo” para que te lleguen aunque la app esté cerrada.':'Turn on “Receive notifications on this device” so they arrive even when the app is closed.','Cierre del día':'End of day','¿Ya registraste lo de hoy?':'Did you log today\'s activity?','Hoy no registraste ingresos, egresos ni movimientos de deudas. Si hubo alguno, anótalo ahora para mantener tus cuentas al día.':'You didn\'t record any income, expenses or debt payments today. If there were any, add them now to keep your accounts up to date.','Todavía no tienes movimientos de hoy. Anótalos ahora y mantén tus cuentas al día.':'You have no transactions today yet. Add them now and keep your accounts up to date.','Ocultar por hoy':'Hide for today','Invita y gana Premium':'Invite and earn Premium','Tu código':'Your code','Compartir invitación':'Share invite','Copiar código':'Copy code','Código copiado':'Code copied','Invitación copiada: pégala en WhatsApp o donde quieras':'Invite copied: paste it in WhatsApp or anywhere','amigo invitado':'friend invited','amigos invitados':'friends invited','pagaron Premium':'paid Premium','pagó Premium':'paid Premium','semana ganada':'week earned','semanas ganadas':'weeks earned','Pagó Premium · +2 semanas':'Paid Premium · +2 weeks','Registrado · +1 semana':'Signed up · +1 week','Aún no has invitado a nadie. Comparte tu código y empieza a ganar semanas.':'You haven\'t invited anyone yet. Share your code and start earning weeks.','¿Te invitó alguien? Escribe su código':'Did someone invite you? Enter their code','Usar código':'Use code','Así le regalas una semana de Premium a quien te invitó.':'This gives the person who invited you a week of Premium.','Premium por referidos':'Premium from referrals','Tu Premium por referidos vence':'Your referral Premium expires','Escribe el código de quien te invitó.':'Enter the code of the person who invited you.','Ese código no existe. Revísalo con quien te invitó.':'That code doesn\'t exist. Check it with whoever invited you.','Ese es tu propio código: compártelo con tus amigos.':'That\'s your own code: share it with your friends.','Ya usaste un código de referido.':'You already used a referral code.','El código de quien te invitó solo se puede usar en las 2 primeras semanas de tu cuenta.':'A referral code can only be used in your account\'s first 2 weeks.','No puedes usar el código de alguien que tú invitaste.':'You can\'t use the code of someone you invited.','Ese código es de otra cuenta abierta en este mismo equipo.':'That code belongs to another account on this same device.','No se pudo usar ese código.':'That code couldn\'t be used.','Cuadre Rápido':'Cuadre Quick','Total restante':'Remaining total','Ingresos del mes':'Income this month','Egresos del mes':'Expenses this month','Abrir Cuadre completo →':'Open full Cuadre →','Abrir Cuadre Rápido':'Open Cuadre Quick','Copiar enlace':'Copy link','Ver Cuadre Rápido':'View Cuadre Quick','Enlace copiado':'Link copied','Primero agrega un método de pago':'Add a payment method first','Un acceso directo en tu pantalla de inicio: al tocarlo ves al instante ingresos, egresos y tu total restante, y registras con un toque. Sin entrar a toda la app.':'A shortcut on your home screen: tap it to instantly see income, expenses and your remaining total, and record with one tap. No need to open the whole app.','En Android también puedes mantener presionado el ícono de Cuadre para ver atajos: Registrar gasto, Registrar ingreso y Cuadre Rápido.':'On Android you can also press and hold the Cuadre icon for shortcuts: Add expense, Add income and Cuadre Quick.','Modo sin conexión':'Offline mode','Sin internet.':'No internet.','Listo: se subió a la nube el cambio que hiciste sin internet':'Done: the change you made offline was uploaded','Puedes seguir usando Cuadre normalmente.':'You can keep using Cuadre as usual.','Lo que registres se guarda en este equipo y se sube solo a tu cuenta cuando vuelva la conexión.':'Whatever you add is saved on this device and uploads to your account automatically when you\'re back online.','Sin internet · usando lo guardado aquí':'Offline · using data saved here','Mis categorías':'My categories','Crea tus propias categorías. Toca una para cambiarle el nombre.':'Create your own categories. Tap one to rename it.','Gastos':'Expenses','Ingresos':'Income','Agregar':'Add','Ej. Seguro, Peluquería':'e.g. Insurance, Haircut','Ej. Alquiler, Comisiones':'e.g. Rent, Commissions','Aún no tienes categorías propias de gastos.':'You have no custom expense categories yet.','Aún no tienes categorías propias de ingresos.':'You have no custom income categories yet.','Cambiar nombre':'Rename','Escribe el nombre de la categoría.':'Type the category name.','Membresía activa':'Active membership','Bienvenido a Cuadre Premium':'Welcome to Cuadre Premium','Gracias por apoyar a Cuadre. Ya tienes todas las funciones, sin límites.':'Thanks for supporting Cuadre. You now have every feature, with no limits.','Movimientos':'Transactions','Métodos de pago':'Payment methods','Métodos':'Methods','Deudas':'Debts','Perfil':'Profile','Administrador':'Admin','Configuración':'Settings',
 'Registrar gasto':'Add expense','Registrar movimiento':'Add transaction','Guardado en tu cuenta':'Saved to your account','Guardado en este dispositivo':'Saved on this device','Guardado en tu cuenta de Claude':'Saved to your Claude account',
 'Cargando…':'Loading…','Cargando tus datos…':'Loading your data…','Un momento.':'One moment.','Cancelar':'Cancel','Guardar':'Save','Editar':'Edit','Eliminar':'Delete','Cerrar':'Close','Listo':'Done','Quitar':'Remove','Copiar':'Copy','Copiado':'Copied','Actualizar':'Refresh','Ver todos':'See all','Volver':'Back','← Volver':'← Back','Menú':'Menu','Nuevo':'New','Todos':'All','Resumen':'Summary','Falta':'Missing','Desde':'From','Hacia':'To','Fecha':'Date','Nota':'Note','Monto':'Amount','Moneda':'Currency','Categoría':'Category','Descripción':'Description','Estado':'Status','Mañana':'Tomorrow','Hoy':'Today','Ayer':'Yesterday','Ahora':'Now','Nunca':'Never','Vencido':'Overdue','al mes':'per month','al año':'per year',
 // Inicio
@@ -2718,7 +2735,7 @@ function movRow(v){
   let title,sub,amt;
   if(v.tipo==='transfer'){const d=metodo(v.destino);title=v.nota||(d&&isCred(d)?'Pago de tarjeta':'Transferencia');sub=(m?m.nombre:'Método eliminado')+' → '+(d?d.nombre:'Método eliminado');amt=money(v.monto,c)+(d&&d.moneda!==c?'<small>→ '+money(v.montoDestino,d.moneda)+'</small>':'')}
   else{title=v.nota||v.categoria||'Sin nota';sub=(v.categoria||'')+' · '+(m?m.nombre:'Método eliminado');amt=(v.tipo==='ingreso'?'+':'−')+money(v.monto,c)}
-  return '<button type="button" class="row" data-edit-mov="'+esc(v.id)+'"><div class="ico '+v.tipo+'">'+svg(v.tipo,2.2)+'</div><div class="main"><b>'+esc(title)+'</b><small>'+esc(sub)+' · '+shortDate(v.fecha)+(horaDe(v)?' · '+esc(fmtHora(horaDe(v))):'')+'</small></div><span class="amt '+(v.tipo==='ingreso'?'pos':'')+'">'+amt+'</span></button>';
+  return '<button type="button" class="row" data-edit-mov="'+esc(v.id)+'"><div class="ico '+v.tipo+'">'+svg(v.tipo,2.2)+'</div><div class="main"><b>'+esc(title)+'</b><small>'+(v.inversion?'<span class="inv-tag">Inversión</span> ':'')+esc(sub)+' · '+shortDate(v.fecha)+(horaDe(v)?' · '+esc(fmtHora(horaDe(v))):'')+'</small></div><span class="amt '+(v.tipo==='ingreso'?'pos':'')+'">'+amt+'</span></button>';
 }
 function balLine(m){
   const s=saldo(m);
@@ -3206,7 +3223,7 @@ function perfilForm(){
 let lastMet='';
 function movForm(v,preset,resume){
   const isNew=!v;
-  const st=resume||{tipo:v?v.tipo:(preset&&preset.tipo)||'gasto',monto:v?showNum(v.monto):'',metodo:v?v.metodo:(preset&&preset.metodo)||(metodo(lastMet)?lastMet:(metodos[0]||{}).id||''),destino:v?v.destino||'':(preset&&preset.destino)||'',montoDestino:v&&v.montoDestino!=null?showNum(v.montoDestino):'',destTocado:!!(v&&v.montoDestino!=null),categoria:v?v.categoria||'':'',fecha:v?v.fecha:today(),hora:v?horaDe(v):horaAhora(),nota:v?v.nota||'':''};
+  const st=resume||{tipo:v?v.tipo:(preset&&preset.tipo)||'gasto',monto:v?showNum(v.monto):'',metodo:v?v.metodo:(preset&&preset.metodo)||(metodo(lastMet)?lastMet:(metodos[0]||{}).id||''),destino:v?v.destino||'':(preset&&preset.destino)||'',montoDestino:v&&v.montoDestino!=null?showNum(v.montoDestino):'',destTocado:!!(v&&v.montoDestino!=null),categoria:v?v.categoria||'':'',fecha:v?v.fecha:today(),hora:v?horaDe(v):horaAhora(),nota:v?v.nota||'':'',inversion:!!(v&&v.inversion)};
   if(st.tipo==='transfer'&&!st.destino){const d=metodos.find(m=>m.id!==st.metodo);st.destino=d?d.id:''}
   const movEq=()=>{const m=metodo(st.metodo),a=parseNum(st.monto);return m&&m.moneda==='VES'&&tasa()&&a>0?'≈ '+money(a/tasa(),'USD'):''};
   const sh={
@@ -3215,7 +3232,8 @@ function movForm(v,preset,resume){
       let b='<div class="seg" role="group" aria-label="Tipo de movimiento">'+[['gasto','Gasto'],['ingreso','Ingreso'],['transfer','Mover dinero']].map(([k,l])=>'<button type="button" data-v="'+k+'" data-mtipo="'+k+'" aria-pressed="'+(st.tipo===k)+'">'+l+'</button>').join('')+'</div>';
       if(!metodos.length){
         b+='<div class="empty" style="padding:10px 0"><b>Primero agrega un método de pago</b><span>Por ejemplo tu efectivo o tu tarjeta. Así sabrás con qué pagaste.</span><button class="btn primary" type="button" data-addmet="metodo">'+svg('plus',2.4)+'Agregar método de pago</button></div>';
-        frame(isNew?'Nuevo movimiento':'Editar movimiento',b,'<div class="r"><button class="btn" type="button" data-close>Cerrar</button></div>');return;
+        if(st.tipo==='gasto')b+='<label class="check inv-check"><input type="checkbox" id="vInv"'+(st.inversion?' checked':'')+'><span><b>Es una inversión</b><small>Algo que te va a generar ganancias (mercancía, herramientas, un curso). El asistente no lo contará como gasto a recortar.</small></span></label>';
+      frame(isNew?'Nuevo movimiento':'Editar movimiento',b,'<div class="r"><button class="btn" type="button" data-close>Cerrar</button></div>');return;
       }
       b+='<div class="field"><label class="lbl" for="vMonto">'+(tr?'¿Cuánto mueves?':'¿Cuánto?')+'</label><div class="amount-wrap"><input class="input amount" id="vMonto" inputmode="decimal" autocomplete="off" placeholder="0" value="'+esc(st.monto)+'"><span class="cur" id="vCur">'+esc(m?sym(m.moneda):'')+'</span></div><span class="hint" id="vEq">'+movEq()+'</span></div>';
       const pick=(key,sel,label,exclude)=>'<div class="field"><span class="lbl">'+label+'</span><div class="pick">'+metodos.filter(x=>x.id!==exclude).map(x=>'<button type="button" data-pick="'+key+'" data-id="'+esc(x.id)+'" aria-pressed="'+(sel===x.id)+'">'+icoT(x.tipo)+'<span><b>'+esc(x.nombre)+'</b><small>'+esc(isCred(x)?'Crédito · '+x.moneda:tipo(x.tipo).n+' · '+x.moneda)+'</small></span></button>').join('')+'<button type="button" class="add" data-addmet="'+key+'">+ Nuevo método</button></div></div>';
@@ -3257,6 +3275,7 @@ function movForm(v,preset,resume){
       if(el.id==='vFecha')st.fecha=el.value;
       if(el.id==='vNota')st.nota=el.value;
       if(el.id==='vHora')st.hora=el.value;
+      if(el.id==='vInv')st.inversion=el.checked;
       if(el.id==='vNuevaCat')st.nuevaCat=el.value;
     },
     save(){
@@ -3265,7 +3284,7 @@ function movForm(v,preset,resume){
       if(!(a>0)){showErr('Escribe el monto. Usa solo números, por ejemplo 25 o 25,50.');$('#vMonto')&&$('#vMonto').focus();return}
       const m=metodo(st.metodo);if(!m){showErr(st.tipo==='gasto'?'Elige con qué pagaste.':'Elige dónde lo recibiste.');return}
       if(!st.fecha){showErr('Elige la fecha.');return}
-      const obj={id:isNew?newId():v.id,tipo:st.tipo,monto:round2(a),metodo:m.id,fecha:st.fecha,hora:/^\d{2}:\d{2}$/.test(st.hora||'')?st.hora:'',nota:st.nota.trim(),creado:isNew?Date.now():(v.creado||Date.now())};
+      const obj={id:isNew?newId():v.id,tipo:st.tipo,monto:round2(a),metodo:m.id,fecha:st.fecha,hora:/^\d{2}:\d{2}$/.test(st.hora||'')?st.hora:'',nota:st.nota.trim(),creado:isNew?Date.now():(v.creado||Date.now())};if(st.tipo==='gasto'&&st.inversion)obj.inversion=true;
       if(st.tipo==='transfer'){
         const d=metodo(st.destino);if(!d){showErr('Elige hacia dónde mueves el dinero.');return}
         if(d.id===m.id){showErr('Elige dos métodos distintos.');return}
