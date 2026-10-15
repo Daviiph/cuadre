@@ -522,6 +522,16 @@ textarea.input{resize:vertical;min-height:70px;font:inherit}
 .foto-btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .foto-cam{position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;background:var(--surface);color:var(--accent);border:2px solid var(--accent);display:grid;place-items:center}
 .foto-wrap .link{font-size:.78rem;color:var(--muted)}
+/* Por clasificar */
+.clasif-head{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px;border-radius:16px;background:var(--soft);text-align:center}
+.clasif-head span{font-size:.85rem;color:var(--muted);font-weight:600}.clasif-head b{font-size:1.9rem;letter-spacing:-.02em}
+.clasif-head.ingreso b{color:var(--pos)}.clasif-head.gasto b{color:var(--neg)}
+.clasif-head small{color:var(--muted)}.clasif-head q{font-size:.78rem;color:var(--muted);quotes:none;max-width:100%;overflow-wrap:anywhere;opacity:.85}
+.cap-url{display:flex;gap:8px;align-items:center;background:var(--soft);border-radius:12px;padding:8px 10px}
+.cap-url code{flex:1;min-width:0;font-size:.72rem;overflow-wrap:anywhere}
+.cap-pasos{border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:.88rem}.cap-pasos summary{font-weight:700;cursor:pointer}
+.cap-pasos ol{margin:8px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px}.cap-pasos code{font-size:.8rem;background:var(--soft);padding:1px 4px;border-radius:4px}
+
 /* Pantalla de voz */
 #vozPan{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;gap:14px;padding:calc(18px + env(safe-area-inset-top,0px)) 20px calc(22px + env(safe-area-inset-bottom,0px));overflow-y:auto;
   background:radial-gradient(120% 70% at 50% 0%,#FFFFFF 0%,#F1ECFF 45%,#E6DEFF 100%);color:#1B1530;animation:vzIn .45s cubic-bezier(.16,1,.3,1) both}
@@ -824,6 +834,7 @@ function useLocal(){
 }
 /* ---------- Cuenta en la nube (Supabase): solo en la versión web ---------- */
 const SES_KEY='cuadre-sesion';
+let pendientes=[],captura=null; // movimientos leídos de notificaciones del banco, y el enlace secreto para recibirlos
 const nube={ses:null,cargado:false,admin:false,usuarios:null,usuariosErr:'',sync:0};
 // pasos: entrar | crear | confirmar | recuperar | recuperar-ok | enlace | enlace-ok | nueva
 const login={terminos:false,paso:'entrar',correo:'',clave:'',clave2:'',codigo:'',enviando:false,err:'',info:'',noVerif:false};
@@ -930,7 +941,7 @@ window.addEventListener('online',()=>{if(mode==='nube'&&nube.ses){nube.offline=f
 window.addEventListener('offline',()=>{if(mode==='nube'){nube.offline=true;render()}});
 function sesionVencida(){if(mode!=='nube')return;borrarSes();resetDatos();mode='login';irPaso('entrar');login.err='Tu sesión se cerró. Vuelve a entrar.';closeSheetSafe();render()}
 function closeSheetSafe(){try{if(SH)closeSheet()}catch(e){}}
-function resetDatos(){if(typeof adm!=='undefined')Object.assign(adm,{lista:null,off:0,fin:false,resumen:null,equipo:null,devs:null,devOff:0,nombres:{},yo:null});nube.filas=null;nube.syncAt='';metodos=[];movs=[];deudas=[];cfg={};nube.cargado=false;nube.admin=false;nube.usuarios=null;plan.info=null;plan.pagos=null;plan.pendientes=null;plan.motivo='';nube.dispositivos=null}
+function resetDatos(){if(typeof adm!=='undefined')Object.assign(adm,{lista:null,off:0,fin:false,resumen:null,equipo:null,devs:null,devOff:0,nombres:{},yo:null});nube.filas=null;nube.syncAt='';pendientes=[];captura=null;metodos=[];movs=[];deudas=[];cfg={};nube.cargado=false;nube.admin=false;nube.usuarios=null;plan.info=null;plan.pagos=null;plan.pendientes=null;plan.motivo='';nube.dispositivos=null}
 function devId(){try{let d=localStorage.getItem('cuadre-dev');if(!d||d.length<16){const a=new Uint8Array(12);crypto.getRandomValues(a);d=[...a].map(x=>x.toString(16).padStart(2,'0')).join('');localStorage.setItem('cuadre-dev',d)}return d}catch(e){return null}}
 function modeloAndroid(){const m=/Android [\d.]+; ([^;)]+?)(?: Build|\))/.exec(navigator.userAgent||'');return m&&m[1]&&m[1]!=='K'?m[1].trim():''}
 function marcarVisita(){const disp=dispositivo(),dev=devId();return(dev?nubeRpc('marcar_visita',{disp,dev}):Promise.reject()).catch(()=>nubeRpc('marcar_visita',{disp}))}
@@ -962,9 +973,9 @@ let _cacheT=null;
 function guardarCache(){clearTimeout(_cacheT);_cacheT=setTimeout(()=>{try{if(nube.ses&&nube.filas)localStorage.setItem(cacheKey(),JSON.stringify({v:1,filas:nube.filas,syncAt:nube.syncAt||''}))}catch(e){}},300)}
 function leerCache(){try{const c=JSON.parse(localStorage.getItem(cacheKey())||'null');return c&&c.v===1&&c.filas?c:null}catch(e){return null}}
 function aplicarFilas(){
-  const M=[],V=[],D=[];let C={};
-  Object.entries(nube.filas||{}).forEach(([k,data])=>{const i=k.indexOf('|'),col=k.slice(0,i),id=k.slice(i+1);const o={...(data||{}),id};if(col==='metodos')M.push(o);else if(col==='movs')V.push(normMov(o));else if(col==='deudas')D.push(o);else if(col==='cfg'&&id==='cfg')C=data||{}});
-  metodos=M;movs=V;deudas=D;cfg=C;sortM();
+  const M=[],V=[],D=[],P=[];let C={},K=null;
+  Object.entries(nube.filas||{}).forEach(([k,data])=>{const i=k.indexOf('|'),col=k.slice(0,i),id=k.slice(i+1);const o={...(data||{}),id};if(col==='metodos')M.push(o);else if(col==='movs')V.push(normMov(o));else if(col==='deudas')D.push(o);else if(col==='cfg'&&id==='cfg')C=data||{};else if(col==='pendientes')P.push({...(data||{}),id});else if(col==='captura'&&id==='cfg')K=data||null});
+  metodos=M;movs=V;deudas=D;cfg=C;sortM();pendientes=P.sort((a,b)=>(a.creado||0)-(b.creado||0));captura=K;
 }
 async function traerFilas(filtro){
   const out=[];
@@ -1890,10 +1901,10 @@ function vozResumen(r){
 }
 const VOZ_EJ=['Gasté 15 dólares en comida ayer','Me pagaron 300 bolívares por Pago Móvil','Le debo a Pedro 20 dólares para el viernes','María me debe 500 bolívares'];
 function vozForm(){
-  voz.txt='';voz.err='';voz.oyendo=false;voz.teclado=!SRec;
+  voz.txt='';voz.err='';voz.oyendo=false;voz.teclado=!SRec||(esIOS()&&enApp());voz.focoTec=voz.teclado;
   let el=document.getElementById('vozPan');if(!el){el=document.createElement('div');el.id='vozPan';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-label','Registrar por voz');document.body.appendChild(el)}
   el.hidden=false;document.body.classList.add('voz-abierta');vozDibujar();
-  if(SRec)setTimeout(()=>vozEscuchar(),350);
+  if(SRec&&!voz.teclado)setTimeout(()=>vozEscuchar(),350);
 }
 function vozCerrar(){try{voz.rec&&voz.rec.abort()}catch(e){}voz.oyendo=false;const el=document.getElementById('vozPan');if(el){el.classList.add('sale');setTimeout(()=>{el.hidden=true;el.classList.remove('sale');el.innerHTML=''},280)}document.body.classList.remove('voz-abierta')}
 function vozDibujar(){
@@ -1930,15 +1941,24 @@ document.addEventListener('click',e=>{
 document.addEventListener('input',e=>{if(e.target.id!=='vozTxt')return;voz.txt=e.target.value;clearTimeout(voz.t);voz.t=setTimeout(()=>{voz.focoTec=true;vozDibujar()},500)});
 document.addEventListener('keydown',e=>{const p=document.getElementById('vozPan');if(!p||p.hidden)return;if(e.key==='Escape')vozCerrar();if(e.key==='Enter'&&e.target.id==='vozTxt'){e.preventDefault();const b=document.getElementById('vozSeguir');if(b)b.click()}});
 function vozEscuchar(){
-  if(voz.oyendo){try{voz.rec.stop()}catch(e){}return}
+  if(voz.oyendo){vozParar();return}
   const rec=new SRec();voz.rec=rec;rec.lang='es-VE';rec.interimResults=true;rec.continuous=false;rec.maxAlternatives=1;
-  const base=voz.txt;voz.err='';
-  rec.onresult=e=>{let t='';for(const x of e.results)t+=x[0].transcript;voz.txt=(base?base+' ':'')+t;vozDibujar()};
-  rec.onerror=e=>{voz.err=e.error==='network'?'El dictado del navegador necesita internet. Sin conexión, toca el lápiz y usa el micrófono de tu teclado.':e.error==='not-allowed'||e.error==='service-not-allowed'?'Permite el uso del micrófono para esta página en los ajustes del navegador.':e.error==='no-speech'?'No te escuché. Toca el micrófono e intenta de nuevo.':'';if(e.error==='network')voz.teclado=true};
-  rec.onend=()=>{voz.oyendo=false;vozDibujar()};
-  try{rec.start();voz.oyendo=true}catch(e){voz.err='No se pudo usar el micrófono.'}
+  const base=voz.txt;voz.err='';voz.oido=false;
+  const fin=()=>{clearTimeout(voz.tSil);clearTimeout(voz.tMax);clearTimeout(voz.tNada);clearTimeout(voz.tFin);if(!voz.oyendo)return;voz.oyendo=false;
+    if(!voz.oido&&!voz.err){voz.err='No llegó lo que dijiste. Toca el teclado y usa su micrófono para dictar (funciona incluso sin internet).';voz.teclado=true;voz.focoTec=true}
+    vozDibujar()};
+  rec.onresult=e=>{let t='';for(const x of e.results)t+=x[0].transcript;voz.oido=true;voz.txt=(base?base+' ':'')+t.trim();vozDibujar();
+    // al dejar de hablar ~1,4 s, se detiene solo y muestra lo que entendió
+    clearTimeout(voz.tSil);voz.tSil=setTimeout(vozParar,1400)};
+  rec.onerror=e=>{voz.err=e.error==='network'?'El dictado del navegador necesita internet. Toca el teclado y usa su micrófono (funciona sin internet).':e.error==='not-allowed'||e.error==='service-not-allowed'?'Permite el micrófono para Cuadre en los ajustes del teléfono, o usa el micrófono del teclado.':e.error==='no-speech'?'No te escuché. Toca el micrófono e intenta de nuevo.':e.error==='aborted'?'':'No se pudo usar el dictado. Usa el micrófono del teclado.';
+    if(e.error&&e.error!=='no-speech'&&e.error!=='aborted'){voz.teclado=true;voz.focoTec=true}fin()};
+  rec.onend=fin;
+  voz.tMax=setTimeout(vozParar,15000);                       // máximo 15 s por frase
+  voz.tNada=setTimeout(()=>{if(!voz.oido)vozParar()},7000); // si en 7 s no llega nada, se detiene
+  try{rec.start();voz.oyendo=true}catch(e){voz.err='No se pudo usar el micrófono. Usa el del teclado.';voz.teclado=true;voz.focoTec=true}
   vozDibujar();
 }
+function vozParar(){try{voz.rec&&voz.rec.stop()}catch(e){}clearTimeout(voz.tFin);voz.tFin=setTimeout(()=>{if(voz.oyendo){try{voz.rec.abort()}catch(e){}if(voz.rec&&voz.rec.onend)voz.rec.onend()}},1200)}
 function vozAplicar(r){
   if(r.tipo==='abono'){abonoForm(r.deuda,null,{monto:showNum(r.monto),fecha:r.fecha||today()});return}
   if(r.tipo==='deuda'){deudaForm(null,{dir:r.dir,clase:'persona',titulo:r.persona||'',monto:showNum(r.monto),moneda:r.moneda||'USD',desde:r.fecha||today(),limite:r.limite||''});return}
@@ -1951,6 +1971,78 @@ function vozAplicar(r){
 }
 const icoMic='<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
 document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-voz]');if(t){e.preventDefault();if(!ready()||!tienePerfil())return;vozForm()}});
+
+/* ---------- Movimientos leídos de notificaciones del banco: "¿de qué fue?" ---------- */
+const capURL=()=>captura&&captura.token&&SUPA?SUPA.url+'/functions/v1/capturar?t='+captura.token:'';
+function porClasificarCard(){
+  if(mode!=='nube'||!pendientes.length)return '';
+  const n=pendientes.length;
+  return '<div class="card clasif-card"><div class="card-h"><div class="inst-tit"><span class="av-ico" aria-hidden="true">'+svg('campana',2)+'</span><div><h2>'+(n===1?'1 movimiento por clasificar':n+' movimientos por clasificar')+'</h2><p class="sub">Llegaron de las notificaciones de tu banco. Solo dinos de qué fueron.</p></div></div></div><div class="two"><button class="btn primary" type="button" id="clasifAbrir">Clasificar ahora</button></div></div>';
+}
+let _clasifAuto=false;
+function revisarPendientes(){if(mode==='nube'&&pendientes.length&&!_clasifAuto&&!SH&&ready()&&tienePerfil()&&(!legalOk||legalOk())){_clasifAuto=true;setTimeout(()=>{if(!SH)clasificarForm()},900)}}
+function clasificarForm(){
+  if(!pendientes.length)return;
+  const st={i:0,tipo:'',categoria:'',nota:'',metodo:'',err:''};
+  const prep=()=>{const p=pendientes[st.i];if(!p)return;st.tipo=p.tipo||'';st.categoria='';st.nota='';st.err='';
+    const ap=sinAc(p.app||'')+' '+sinAc(p.texto||'');
+    const m=metodos.filter(x=>!isCred(x)&&x.moneda===p.moneda);
+    st.metodo=((m.find(x=>{const n=sinAc(x.nombre+' '+(x.banco||''));return n.split(/\s+/).some(w=>w.length>=3&&ap.includes(w))})||m[0]||metodos.find(x=>!isCred(x))||{}).id)||''};
+  prep();
+  openSheet({
+    draw(){
+      const p=pendientes[st.i];if(!p){closeSheet();return}
+      const ing=st.tipo==='ingreso',d=new Date(p.creado||Date.now());
+      const mets=metodos.filter(x=>!isCred(x));
+      frame('¿De qué fue?',
+        '<div class="clasif-head '+(st.tipo||'')+'"><span>'+(st.tipo?(ing?'Recibiste':'Pagaste'):'Movimiento')+'</span><b>'+(ing?'+':st.tipo?'−':'')+esc(money(p.monto,p.moneda))+'</b><small>'+esc((p.app?p.app+' · ':'')+longDate(iso(d))+' · '+fmtHora(String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')))+'</small><q>'+esc(p.texto||'')+'</q></div>'+
+        (st.tipo?'':'<div class="field"><span class="lbl">¿Entró o salió dinero?</span><div class="two"><button class="btn" type="button" data-ctipo="ingreso">Entró (ingreso)</button><button class="btn" type="button" data-ctipo="gasto">Salió (gasto)</button></div></div>')+
+        (st.tipo?'<div class="field"><span class="lbl">Categoría</span><div class="chips">'+catsOf(st.tipo).filter(c=>c!=='Deudas'&&c!=='Cobros').map(c=>'<button type="button" class="chip" data-ccat="'+esc(c)+'" aria-pressed="'+(st.categoria===c)+'">'+esc(c)+'</button>').join('')+'</div></div>'+
+          '<div class="field"><label class="lbl" for="cNota">Motivo <small>(opcional)</small></label><input class="input" id="cNota" maxlength="60" autocomplete="off" placeholder="'+(ing?'Ej. pago de Carlos, venta de torta':'Ej. farmacia, mercado')+'" value="'+esc(st.nota)+'"></div>'+
+          '<div class="field"><span class="lbl">'+(ing?'¿Dónde entró?':'¿Con qué pagaste?')+'</span><div class="chips">'+mets.map(m=>'<button type="button" class="chip" data-cmet="'+esc(m.id)+'" aria-pressed="'+(st.metodo===m.id)+'">'+esc(m.nombre)+' <small>'+esc(m.moneda)+'</small></button>').join('')+'</div></div>':'')+
+        (st.err?'<p class="err-txt" style="margin:0">'+esc(st.err)+'</p>':'')+
+        (pendientes.length>1?'<p class="hint" style="margin:0">'+(st.i+1)+' de '+pendientes.length+'</p>':''),
+        '<button class="btn danger" type="button" id="cDescartar">Descartar</button><div class="r">'+(pendientes.length>1?'<button class="btn" type="button" id="cLuego">Saltar</button>':'<button class="btn" type="button" data-close>Luego</button>')+'<button class="btn primary" type="button" id="shSave"'+(st.tipo?'':' disabled')+'>Guardar</button></div>');
+    },
+    click(el){
+      const b=el.closest&&el.closest('[data-ctipo],[data-ccat],[data-cmet],#cDescartar,#cLuego');if(!b)return;
+      if(b.dataset.ctipo){st.tipo=b.dataset.ctipo;this.draw();return}
+      if(b.dataset.ccat){st.categoria=st.categoria===b.dataset.ccat?'':b.dataset.ccat;this.draw();return}
+      if(b.dataset.cmet){st.metodo=b.dataset.cmet;this.draw();return}
+      if(b.id==='cLuego'){st.i=(st.i+1)%pendientes.length;prep();this.draw();return}
+      if(b.id==='cDescartar'){const p=pendientes[st.i];quitarPendiente(p.id).then(()=>{if(st.i>=pendientes.length)st.i=0;if(!pendientes.length){closeSheet();render();toast('Listo')}else{prep();this.draw()}});return}
+    },
+    input(el){if(el.id==='cNota')st.nota=el.value},
+    save(){
+      const p=pendientes[st.i];const m=metodo(st.metodo);if(!m){st.err=metodos.length?'Elige el método.':'Primero agrega un método de pago.';this.draw();return}
+      let monto=p.monto;if(m.moneda!==p.moneda){const c=convertir(monto,p.moneda,m.moneda);if(c==null){st.err='Ese método está en otra moneda. Pon la tasa del dólar o elige otro.';this.draw();return}monto=Math.round(c*100)/100}
+      const d=new Date(p.creado||Date.now());
+      const obj={id:newId(),tipo:st.tipo,monto:round2(monto),metodo:m.id,fecha:iso(d),hora:String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'),nota:st.nota.trim()||(p.app?(st.tipo==='ingreso'?'Recibido por ':'Pagado con ')+p.app:''),categoria:st.categoria||'',creado:Date.now()};
+      put('movs',obj).then(()=>quitarPendiente(p.id)).then(()=>{toast(st.tipo==='ingreso'?'Ingreso registrado':'Gasto registrado');if(st.i>=pendientes.length)st.i=0;if(!pendientes.length){closeSheet();render()}else{prep();this.draw()}}).catch(e=>{st.err=errText(e);this.draw()});
+    }
+  });
+}
+async function quitarPendiente(id){await nubeDel('pendientes',id);pendientes=pendientes.filter(x=>x.id!==id)}
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('#clasifAbrir');if(t)clasificarForm()});
+// Configuración: activar el registro automático
+function capturaAjHtml(){
+  if(mode!=='nube')return '';
+  let h='<div class="field" id="ajCap"><span class="lbl">Registro automático del banco</span><span class="hint">Cuadre recibe las notificaciones de tu banco o de Ubii, anota el monto y al abrir la app te pregunta de qué fue.</span>';
+  if(!capURL())return h+'<button class="btn sm primary" type="button" id="capActivar" style="align-self:flex-start">Activar</button></div>';
+  h+='<div class="cap-url"><code>'+esc(capURL())+'</code><button class="btn sm" type="button" id="capCopiar">Copiar enlace</button></div><span class="hint">Es tu enlace personal: no lo compartas.</span>';
+  h+='<details class="cap-pasos"><summary>Android (Ubii, Banco de Venezuela y otros)</summary><ol><li>Instala <b>MacroDroid</b> desde Play Store y dale “Acceso a notificaciones”.</li><li>Crea una macro. <b>Disparador:</b> Notificación → Notificación recibida → elige Ubii App y la app de tu banco.</li><li><b>Acción:</b> Conectividad → Solicitud HTTP. Método <b>POST</b>, URL: tu enlace. Cuerpo tipo formulario: <code>texto=</code> + el texto de la notificación (con el botón “…” agrega título y texto), y opcional <code>app=</code> + nombre de la app.</li><li>Guarda. Cada vez que llegue una notificación de dinero, aparecerá en Cuadre.</li></ol></details>';
+  h+='<details class="cap-pasos"><summary>iPhone (SMS del banco y Apple Wallet)</summary><ol><li>Abre <b>Atajos</b> → Automatización → <b>Mensaje</b>: remitente tu banco (o “el mensaje contiene Bs”) → Ejecutar inmediatamente.</li><li>Acción <b>Obtener contenido de URL</b>: URL tu enlace, Método <b>POST</b>, Cuerpo <b>Formulario</b>, campo <code>texto</code> = Mensaje (contenido).</li><li>Para pagos con tarjeta en Wallet: automatización <b>Transacción</b> con la misma acción y <code>texto</code> = “Compra por $” + Importe + “ en ” + Comerciante.</li></ol><p class="hint" style="margin:6px 0 0">iPhone no deja que otras apps lean notificaciones de Ubii o de los bancos; por eso se usan los SMS y Wallet.</p></details>';
+  return h+'<div class="two"><button class="btn sm" type="button" id="capProbar">Enviar movimiento de prueba</button><button class="btn sm" type="button" id="capNuevo">Cambiar enlace</button></div></div>';
+}
+function capturaClick(el,sh){
+  const b=el.closest&&el.closest('#capActivar,#capCopiar,#capProbar,#capNuevo');if(!b)return false;
+  if(b.id==='capCopiar'){(navigator.clipboard?navigator.clipboard.writeText(capURL()):Promise.reject()).then(()=>toast('Enlace copiado')).catch(()=>toast(capURL()));return true}
+  if(b.id==='capProbar'){sfetch('/functions/v1/capturar',{method:'POST',body:JSON.stringify({token:captura.token,texto:'Prueba de Cuadre: Recibiste un pago por Bs. 1,00',app:'Prueba'})}).then(r=>{toast(r&&r.ok?'Listo: en unos segundos aparece para clasificar':'No llegó. Revisa tu conexión.');setTimeout(()=>{_clasifAuto=false;cargarNube(false)},2500)}).catch(()=>toast('No llegó. Revisa tu conexión.'));return true}
+  if(b.id==='capNuevo'&&b.dataset.armed!=='1'){b.dataset.armed='1';b.textContent='¿Seguro? El enlace viejo dejará de funcionar';return true}
+  const a=new Uint8Array(20);crypto.getRandomValues(a);const token=[...a].map(x=>x.toString(16).padStart(2,'0')).join('');
+  nubePut('captura','cfg',{token}).then(()=>{captura={token};sh.draw();toast(b.id==='capNuevo'?'Enlace cambiado':'Listo: ahora configura tu teléfono')}).catch(e=>toast(errText(e)));
+  return true;
+}
 /* ---------- Instalar la app en la pantalla de inicio (versión web) ---------- */
 const inst={evt:null,oculto:false};
 try{inst.oculto=localStorage.getItem('cuadre-instalar-oculto')==='1'}catch(e){}
@@ -2300,7 +2392,7 @@ function ajustesForm(){
           (soporte?'<label class="check" style="margin-top:6px"><input type="checkbox" id="ajNotif"'+(s.notificar&&Notification.permission==='granted'?' checked':'')+'><span>Recibir notificaciones en este dispositivo'+(Notification.permission==='denied'?' <small class="err-txt">(bloqueadas: actívalas en los ajustes del navegador)</small>':'')+'</span></label>'
           :'<p class="hint" style="margin:6px 0 0">'+(esIOS()&&!enApp()?'En iPhone, para recibir notificaciones primero instala Cuadre en tu pantalla de inicio (Perfil → Instala Cuadre) y ábrela desde ahí.':'Este navegador no permite notificaciones. Igual verás los avisos en Inicio.')+'</p>')+
         '</div>'+
-        recordatorioAjHtml()+
+        recordatorioAjHtml()+capturaAjHtml()+
         (tienePerfil()?catsAjHtml():'')+
         '<p class="hint" style="margin:0">Tus preferencias se guardan en tu cuenta y se aplican en todos tus dispositivos.</p>',
         '<div class="r"><button class="btn primary" type="button" data-close>Listo</button></div>');
@@ -2308,6 +2400,7 @@ function ajustesForm(){
     click(el){
       if(catsAjClick(el,this))return;
       if(recordatorioClick(el,this))return;
+      if(capturaClick(el,this))return;
       const b=el.closest&&el.closest('[data-aj]');if(!b)return;
       const k=b.dataset.aj,v=k==='avisoDias'?+b.dataset.v:b.dataset.v;
       guardarAjustes({[k]:v}).catch(e=>toast(errText(e)));this.draw();render();
@@ -2592,7 +2685,7 @@ let _ajKey='';
 function syncAjustes(){const k=JSON.stringify(ajustes());if(k!==_ajKey){_ajKey=k;aplicarTema();aplicarIdioma()}}
 function render(){
   syncAjustes();recuperarCats();setTimeout(tasasEnVivo,0);
-  if(_modoAnt==='login'&&mode==='nube')telon();_modoAnt=mode;
+  if(_modoAnt==='login'&&mode==='nube')telon();_modoAnt=mode;setTimeout(revisarPendientes,0);
   const navs=[['inicio','Inicio'],['movs','Movimientos'],['metodos','Métodos de pago'],['deudas','Deudas'],['perfil','Perfil']].concat(esAdminNube()?[['admin','Administrador']]:[]);
   $('#nav').innerHTML=navs.map(([k,l])=>'<button type="button" data-nav="'+k+'"'+(view===k?' aria-current="page"':'')+'>'+(k==='perfil'?svg('persona',1.8):svg(k,1.8))+'<span>'+l+'</span></button>').join('');
   const bb=(k,l)=>'<button type="button" data-nav="'+k+'"'+(view===k?' aria-current="page"':'')+'>'+svg(k,1.8)+'<span>'+l+'</span></button>';
@@ -2608,7 +2701,7 @@ function render(){
   document.body.classList.toggle('modo-rapido',view==='rapido');revisarAccion();
   const body=({rapido:vRapido,inicio:vInicio,movs:vMovs,metodos:vMetodos,deudas:vDeudas,perfil:vPerfil,premium:vPremium,admin:vAdmin}[view]||vInicio)();
   const _fa=document.activeElement,_fid=_fa&&_fa.id==='admBuscar'?_fa.id:null;
-  $('#view').innerHTML=banner+(view==='inicio'?bienvenidaPremium()+registroDiaCard()+avisosCard()+avisoPlan()+instalarCard(false):view==='deudas'?permisoNotifCard()+avisosCard():'')+body;
+  $('#view').innerHTML=banner+(view==='inicio'?porClasificarCard()+bienvenidaPremium()+registroDiaCard()+avisosCard()+avisoPlan()+instalarCard(false):view==='deudas'?permisoNotifCard()+avisosCard():'')+body;
   if(ready())setTimeout(revisarNotificaciones,800);
   if(_fid){const i=document.getElementById(_fid);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
   const[k,t]=statusNow();setStatus(k,t);
