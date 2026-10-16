@@ -29,18 +29,18 @@
 <title>Cuadre</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Figtree:wght@400;500;600;700;800&display=swap">
 <style>
 /* Layout: barra lateral morada + tarjetas redondeadas (referencia del usuario); en celular, barra inferior con botón + */
 :root{
-  --bg:#F5F5F8; --surface:#FFFFFF; --ink:#16151D; --muted:#6B6A78; --line:#ECEBF1; --soft:#F1EFF7;
+  --bg:#F6F4FA; --surface:#FFFFFF; --ink:#1A1426; --muted:#6C6680; --line:#EAE6F2; --soft:#F1EDF8;
   --accent:#7B3FE4; --accent-ink:#FFFFFF; --accent-soft:#EEE7FC; --accent-2:#A78BFA;
-  --pos:#1E8A4C; --pos-soft:#E6F4EA; --neg:#C2362F; --neg-soft:#FCE9E8; --warn:#9A5B00; --warn-soft:#FDF1DD;
+  --pos:#138A5B; --pos-soft:#E3F4EC; --neg:#D2453B; --neg-soft:#FCE8E6; --warn:#9A5B00; --warn-soft:#FDF1DD;
   --t-efectivo:#16A34A; --t-debito:#2563EB; --t-credito:#7C3AED; --t-cripto:#EA580C; --t-banco:#0D9488; --t-digital:#DB2777; --t-otro:#64748B;
   --cat1:#2a78d6; --cat2:#eb6834; --cat3:#1baf7a; --cat4:#eda100; --cat5:#e87ba4; --cat6:#008300; --cat7:#6250d6; --cat8:#e34948;--cat9:#9a6b3f; --cat-x:#9a98a6;
   --c-in:#7B3FE4; --c-out:#eb6834;
   --shadow:0 1px 2px rgba(22,21,29,.04),0 6px 20px rgba(22,21,29,.05);
-  --font:'Plus Jakarta Sans',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;--display:'Bricolage Grotesque','Figtree',system-ui,sans-serif;
   --r:20px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
@@ -353,9 +353,12 @@ select.input{padding-right:8px}
 .sheet{animation:sube .46s cubic-bezier(.16,1,.3,1) both}
 @keyframes fondo{from{background:rgba(15,12,25,0);backdrop-filter:blur(0)}to{backdrop-filter:blur(2px)}}
 @keyframes sube{from{transform:translateY(40px) scale(.97);opacity:0}to{transform:none;opacity:1}}
-#view.vt>*{animation:entra .5s cubic-bezier(.16,1,.3,1) both}
-#view.vt>*:nth-child(2){animation-delay:.05s}#view.vt>*:nth-child(3){animation-delay:.1s}#view.vt>*:nth-child(4){animation-delay:.15s}#view.vt>*:nth-child(5){animation-delay:.2s}#view.vt>*:nth-child(n+6){animation-delay:.25s}
-@keyframes entra{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+#view.vt{animation:entra .38s cubic-bezier(.2,.8,.2,1) both}
+@keyframes entra{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.btn,.acc,.mini,.chip,.tasa-t,.row,.ih-ic,.fil,.mcard,.type,.h-acc span{transition:transform .16s cubic-bezier(.2,.8,.2,1),background-color .2s,color .2s,box-shadow .2s}
+.btn:active,.acc:active,.mini:active,.chip:active,.tasa-t:active,.row:active,.ih-ic:active,.mcard:active,.type:active{transform:scale(.97)}
+#toast:not([hidden]){animation:toastIn .5s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,-120%) scale(.92)}to{opacity:1;transform:translate(-50%,0)}}
 .nav button,.bottombar button{transition:background .25s,color .25s}
 }
 /* Pantalla de entrada: el logo se dibuja como un plano y se llena de color */
@@ -538,6 +541,18 @@ textarea.input{resize:vertical;min-height:70px;font:inherit}
 .foto-btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .foto-cam{position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;background:var(--surface);color:var(--accent);border:2px solid var(--accent);display:grid;place-items:center}
 .foto-wrap .link{font-size:.78rem;color:var(--muted)}
+body.en-inicio .voz-fab{display:none}
+
+/* Identidad tipográfica: los montos mandan */
+h1,h2,.ih-hola b,.bal2 b,.big,.rap-big,.an-top b,.a-txt b,.tasa-t b,.acc b,.mini b,.amt,.hamt b,.clasif-head b,.ref-cod b,.vz-txt,#splash .sp-nom,.prem-hola-txt h2,.mes-sel button[aria-pressed="true"]{font-family:var(--display);font-optical-sizing:auto}
+.bal2 b,.big,.rap-big,.an-top b,.a-txt b,.tasa-t b,.acc b,.mini b,.amt,.hamt b,.clasif-head b,.an-v b,.cb b,.num{font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.015em}
+h1{letter-spacing:-.025em;font-weight:800}h2{letter-spacing:-.01em;font-weight:700}
+.bal2 b{font-weight:700;font-size:1.75rem}.ih-body .hero2 .bal2>div:first-child b{font-size:2.15rem}
+.ref-cod b{letter-spacing:.08em}
+.toast{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:11px 18px 11px 14px}
+.t-ok{width:20px;height:20px;border-radius:50%;background:var(--pos);color:#fff;display:grid;place-items:center;flex:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
 .div-sw{display:flex;flex-direction:column;gap:8px;margin-top:8px}.seg.sm button{font-size:.82rem;padding:8px}
 .div-tag{display:inline-block;font-size:.68rem;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:1px 6px;border-radius:999px;margin-right:2px}
 .tasa-g{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 8px;scroll-snap-type:x mandatory}
@@ -2926,6 +2941,7 @@ function vInicio(){
         '<button type="button" class="acc add" data-act="nuevo-metodo"><span>+</span><small>Agregar cuenta</small></button></div>'+
       ((debo.length||meDeben.length)?'<div class="ih-sec"><h2>Deudas</h2><button class="link" type="button" data-nav="deudas">Ver</button></div><div class="mini-g">'+(meDeben.length?'<button type="button" class="mini" data-nav="deudas"><span>Te deben</span><b class="pos">'+sumD(meDeben)+'</b></button>':'')+(debo.length?'<button type="button" class="mini" data-nav="deudas"><span>Debes</span><b class="neg">'+sumD(debo)+'</b></button>':'')+'</div>':'');
   }
+  if(!window.__contado&&iTab==='resumen'){window.__contado=true;setTimeout(contarSaldo,document.getElementById('splash')?3500:120)}
   setTimeout(()=>{const n=document.querySelector('.ih-notch');if(n)n.style.left=pct(iTab)+'%';const m=document.querySelector('.mes-sel [aria-pressed="true"]');if(m){const w=m.parentNode;w.scrollLeft=m.offsetLeft-w.clientWidth/2+m.offsetWidth/2}},30);
   return o+'<div class="ih-panel"><span class="ih-notch" aria-hidden="true" style="left:'+pct(desde)+'%"></span><div class="ih-body'+(dir?' tab-'+dir:'')+'">'+c+'</div></div>';
 }
@@ -2965,6 +2981,12 @@ function tasasTiles(){
     return '<button type="button" class="tasa-t" data-act="tasa"><span class="tt-ico" style="background:'+col+'">'+ico+'</span><b>'+esc(showNum(Math.round(val*100)/100))+'</b><small>'+nom+'</small>'+(ch!=null&&Math.abs(ch)>=0.005?'<em class="'+(ch>=0?'up':'down')+'">'+(ch>=0?'↑ ':'↓ ')+Math.abs(ch).toFixed(2).replace('.',',')+'%</em>':'<em>Bs por unidad</em>')+'</button>'};
   return '<div class="ih-sec"><h2>Tasas de hoy</h2>'+(cfg.tasaVivo?'<span class="vivo"><i></i>En vivo</span>':'')+'</div><div class="tasa-g">'+
     t('b','₮','#26A17B','USDT · Binance P2P',tasa(),p&&p.b)+t('c','$','#2F6FED','Dólar BCV',tasaBcv(),p&&p.c)+t('e','€','#7B3FE4','Euro BCV',+cfg.tasaEur||0,p&&p.e)+'</div>';
+}
+function contarSaldo(){
+  try{if(matchMedia('(prefers-reduced-motion: reduce)').matches)return}catch(e){}
+  document.querySelectorAll('.bal2 b').forEach(el=>{const tn=el.firstChild;if(!tn||tn.nodeType!==3)return;const m=tn.nodeValue.match(/^(.*?)([\d.]+)(\D*)$/);if(!m)return;
+    const fin=+m[2].replace(/\./g,'');if(!(fin>0))return;const t0=performance.now(),dur=1100;
+    const paso=t=>{const k=Math.min(1,(t-t0)/dur),e=1-Math.pow(2,-10*k);tn.nodeValue=m[1]+Math.round(fin*e).toLocaleString('es-VE')+m[3];if(k<1&&tn.isConnected)requestAnimationFrame(paso)};requestAnimationFrame(paso)});
 }
 function inicioMovs(){
   const FIL=[['todos','Todos','<path d="M4 6h16M4 12h16M4 18h10"/>'],['gasto','Gastos','<path d="M12 5v14M5 12l7 7 7-7"/>'],['ingreso','Ingresos','<path d="M12 19V5M5 12l7-7 7 7"/>'],['transfer','Transferencias','<path d="M7 10h13l-4-4M17 14H4l4 4"/>'],['inv','Inversiones','<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>']];
@@ -3052,7 +3074,7 @@ async function busy(fn,okMsg){
   catch(e){const t=errText(e);lastSaveErr='';showErr(t);if(b){b.disabled=false;b.innerHTML=old}}
 }
 let toastT=0;
-function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true},2600)}
+function toast(m){const t=$('#toast');const ok=/(guardad|registrad|^listo|cread|copiad|movid|eliminad|enviamos|subi|quitad|activ|renombrad|cambiad)/i.test(String(m));t.innerHTML=(ok?'<span class="t-ok" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>':'')+esc(String(m));t.hidden=true;void t.offsetWidth;t.hidden=false;if(ok&&navigator.vibrate)try{navigator.vibrate(10)}catch(e){}clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true},2600)}
 function footer(saveLabel,canDelete){return (canDelete?'<button class="btn danger" type="button" id="shDel">Eliminar</button>':'')+'<div class="r"><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="button" id="shSave">'+saveLabel+'</button></div>'}
 let armT=0;
 function armDelete(el,label,fn){
