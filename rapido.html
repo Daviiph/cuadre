@@ -2212,7 +2212,7 @@ function capturaClick(el,sh){
 /* ---------- Instalar la app en la pantalla de inicio (versión web) ---------- */
 const inst={evt:null,oculto:false};
 try{inst.oculto=localStorage.getItem('cuadre-instalar-oculto')==='1'}catch(e){}
-const enApp=()=>{try{return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}catch(e){return false}};
+const enApp=()=>{try{return /CuadreApp/.test(navigator.userAgent)||matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}catch(e){return false}};
 const esIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const esAndroid=()=>/Android/.test(navigator.userAgent);
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();inst.evt=e;if(typeof render==='function'&&mode==='nube')render()});
