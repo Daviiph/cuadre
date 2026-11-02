@@ -1,14 +1,14 @@
 {
  "id": "./",
- "name": "Cuadre",
- "short_name": "Cuadre",
+ "name": "Saldo",
+ "short_name": "Saldo",
  "description": "Tus finanzas en dólares y en tu moneda, sin enredos.",
  "lang": "es",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",
- "background_color": "#F4F3F8",
- "theme_color": "#7B3FE4",
+ "background_color": "#EEEEF0",
+ "theme_color": "#EEEEF0",
  "icons": [
   {
    "src": "icon-192.png",
@@ -51,7 +51,7 @@
    ]
   },
   {
-   "name": "Cuadre Rápido",
+   "name": "Saldo Rápido",
    "short_name": "Rápido",
    "url": "./rapido.html",
    "icons": [

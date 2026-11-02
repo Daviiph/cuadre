@@ -1,14 +1,14 @@
 {
  "id": "./rapido.html",
- "name": "Cuadre Rápido",
- "short_name": "Cuadre Rápido",
+ "name": "Saldo Rápido",
+ "short_name": "Saldo Rápido",
  "description": "Ingresos, egresos y total restante de un vistazo.",
  "lang": "es",
  "start_url": "./rapido.html",
  "scope": "./",
  "display": "standalone",
- "background_color": "#F4F3F8",
- "theme_color": "#7B3FE4",
+ "background_color": "#EEEEF0",
+ "theme_color": "#EEEEF0",
  "icons": [
   {
    "src": "icon-rapido-192.png",
